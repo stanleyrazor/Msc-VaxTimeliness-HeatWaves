@@ -7,3 +7,15 @@ day_nigeria_final <- mask(day_nigeria_crop, adm0)
 
 plot(day_raster, main="Temperature in Nigeria (EPSG:4326)")
 points(adm0, pch = '.')
+
+
+# practical on several models of GEV
+x <- data.frame(x = rexp(100000, .2)) |> mutate(mx = -x)
+b1 <- brm(x ~ 1,
+          data = x, iter = 4e3, chains = 4, cores = 4,
+          family = gen_extreme_value())
+
+i1 <- inla(x ~ 1, data = x, family = "gev", control.compute = list(config=TRUE))
+
+g1 <- gamlss(x ~ 1, data = x, family = RGE())
+
