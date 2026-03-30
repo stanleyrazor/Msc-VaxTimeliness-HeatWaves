@@ -1,0 +1,9 @@
+# plotting terra and overlay boundary:
+adm0 <- gadm('Nigeria', level = 0, path = 'data/shp/')
+plot(adm0)
+
+day_nigeria_crop <- crop(day_raster, adm0)
+day_nigeria_final <- mask(day_nigeria_crop, adm0)
+
+plot(day_raster, main="Temperature in Nigeria (EPSG:4326)")
+points(adm0, pch = '.')
