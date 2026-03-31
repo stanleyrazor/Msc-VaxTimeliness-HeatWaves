@@ -55,7 +55,8 @@ ggdensity(simulate(m1, 10) |> mutate(across(everything(), \(x) ifelse(x > 28, 1,
 
 d3 <- d1 |>
 
-  filter(b19 <= 36, b5 == 1, h53 != 8) |>
+  # 14 weeks eligibility.
+  filter(b19 <= 36 & b19 >= floor((14*7)/30.4375) & b5 == 1 & h53 != 8) |>
   mutate(across(starts_with('h53'), \(x) ifelse(x %in% c(9997:9998, 97:98), NA, x))) |>
 
   mutate(
