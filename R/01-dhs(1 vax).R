@@ -10,17 +10,17 @@ d1 <- read_dta("data/dhs/NG_2024_DHS_03262026_919_211396/NGBR8BDT/NGBR8BFL.dta")
 d2 <- d1 |>
   select(caseid, v001, v005, v024, v025, b18,
          v190, m15, m14, bord, b4, b8, v106, v136, v130, v131, v501, v717,
-         h9, h9d, h9m, h9y) |>
+         h53, h53d, h53m, h53y) |>
 
   # omitting "don't know" and "inconsistent" - 1 obs
-  mutate(across(starts_with('h9'), \(x) ifelse(x %in% 97:98, NA, x))) |>
+  mutate(across(starts_with('h53'), \(x) ifelse(x %in% 97:98, NA, x))) |>
 
-  # omitting NA on h9
-  filter(!is.na(h9d)) |>
+  # omitting NA on h53
+  filter(!is.na(h53d)) |>
 
   # computing birth date
   mutate(bday = as.Date(b18 - 1, origin = "1900-01-01"),
-         vday = make_date(h9y, h9m, h9d),
+         vday = make_date(h53y, h53m, h53d),
          due_date = (bday %m+% months(9)), # + weeks(4),
          delay = as.integer(pmax(0, as.numeric(vday - due_date)))) |>
 
@@ -53,44 +53,116 @@ ggdensity(simulate(m1, 10) |> mutate(across(everything(), \(x) ifelse(x > 28, 1,
 
 # Trying out a cox model --------------------------------------------------
 
-d3 <- d1 %>%
+d3 <- d1 |>
 
-  filter(b19 < 36, b5 == 1, h9 != 8) %>%
+  filter(b19 <= 36, b5 == 1, h53 != 8) |>
+  mutate(across(starts_with('h53'), \(x) ifelse(x %in% c(9997:9998, 97:98), NA, x))) |>
 
   mutate(
-    eligible = (b19 > 9),
+    eligible = (b19 >= 3),
 
     iday = as.Date(v008a - 1, origin = "1900-01-01"),
     bday = as.Date(b18 - 1, origin = "1900-01-01"),
-    vday = make_date(h9y, h9m, h9d),
+    vday = make_date(h53y, h53m, h53d),
 
-    event_time = as.integer(as.numeric(vday - bday)),   # NA if missing vday
+    due_date = (bday %m+% weeks(14)),
+    #delay = as.integer(pmax(0, as.numeric(vday - due_date))),
+
+    event_time = as.integer(as.numeric(vday - bday)),
+
+    # NA if missing vday
     censor_time = as.integer(as.numeric(iday - bday)),
-
     time_outcome = ifelse(!is.na(event_time), event_time, censor_time),
     time_outcome = pmax(0, time_outcome),
 
     # descriptive event label
     event_label = case_when(
-      h9 == 1           ~ 0,   # card with date
-      h9 %in% c(2,3)    ~ -1,    # reported / card but no date
-      h9 == 0           ~ 1     # no vaxx
-    )
-  ) |>
+      h53 == 1 ~ 0,  # card with date
+      h53 %in% c(2, 3) ~ -1, # reported / card but no date
+      h53 == 0 ~ 1,   # no vaxx
+      T ~ NA
+    ), # Don't know (fallback)
+
+      # some people have NA in their h53d/m/y so force them to be censored.
+      # so if vday is NA, event_label is left/right - depends
+      event_label = case_when(
+        is.na(vday) & h53 == 1 ~ -1, # missing either d/m/y, so make them left censored
+        T ~ event_label)
+    ) |>
 
   # dealing with covariates
-  mutate(v005 = v005 / 1e6,
-         m15 = ifelse(m15 %in% c(10,11,12,96), 'home', 'facility'),
-         m14 = ifelse(m14 == 98, NA, m14),
-         across(c(v717, b4, v501, v131, v130, v106, v190, v024, v025), as_factor)) |>
+  mutate(
+    v005 = v005 / 1e6,
+    m15 = ifelse(m15 %in% c(10, 11, 12, 96), 'home', 'facility'),
+    m14 = ifelse(m14 == 98, NA, m14),
 
-  select(caseid, wt = v005, county = v024, residence = v025, eligible, time_outcome, event_label,
-         wealth = v190, sex = b4, bord, anc = m14, delivery = m15, curr_age = b8,
-         meduc = v106, hhsize = v136, religion = v130, ethnicity = v131,
-         curr_marital = v501, occupation = v717) |>
+    across(c(v717, b4, v501, v131, v130, v106, v190, v024, v025), as_factor)
+  ) |>
+  select(
+    iday, bday, due_date,
+    caseid, wt = v005,
+    county = v024, residence = v025, eligible, time_outcome, event_label, wealth = v190,
+    sex = b4, bord, anc = m14, delivery = m15, curr_age = b8,
+    meduc = v106, hhsize = v136, religion = v130, ethnicity = v131,
+    curr_marital = v501, occupation = v717
+  ) |>
   select(-occupation, -curr_marital, -ethnicity, -religion) |>
   na.omit()
-mvs(d3)
+
+# checking random;y if 7 days pre and 7 days post had a heatwave
+d4 <- d3 |> filter(eligible == T)
+due_dts <- d4$due_date |> unique()
+all_dts <- vector()
+for (i in 1:length(due_dts)) {
+  tmp <- ((due_dts[i] - days(7)):(due_dts[i] + days(7)))
+  all_dts <- c(all_dts, tmp)
+}
+
+vax_dts <- (all_dts |> unique()) + ymd('1970-01-01')
+s3 <- s2 |> filter(date %in% vax_dts)
+table(s3$heatwave)
+
+# old code
+{
+  # d3 <- d1 %>%
+  #
+  #   filter(b19 <= 36, b5 == 1, h53 != 8) %>%
+  #
+  #   mutate(
+  #     eligible = (b19 > 9),
+  #
+  #     iday = as.Date(v008a - 1, origin = "1900-01-01"),
+  #     bday = as.Date(b18 - 1, origin = "1900-01-01"),
+  #     vday = make_date(h53y, h53m, h53d),
+  #
+  #     event_time = as.integer(as.numeric(vday - bday)),   # NA if missing vday
+  #     censor_time = as.integer(as.numeric(iday - bday)),
+  #
+  #     time_outcome = ifelse(!is.na(event_time), event_time, censor_time),
+  #     time_outcome = pmax(0, time_outcome),
+  #
+  #     # descriptive event label
+  #     event_label = case_when(
+  #       h53 == 1           ~ 0,   # card with date
+  #       h53 %in% c(2,3)    ~ -1,    # reported / card but no date
+  #       h53 == 0           ~ 1     # no vaxx
+  #     )
+  #   ) |>
+  #
+  #   # dealing with covariates
+  #   mutate(v005 = v005 / 1e6,
+  #          m15 = ifelse(m15 %in% c(10,11,12,96), 'home', 'facility'),
+  #          m14 = ifelse(m14 == 98, NA, m14),
+  #          across(c(v717, b4, v501, v131, v130, v106, v190, v024, v025), as_factor)) |>
+  #
+  #   select(caseid, wt = v005, county = v024, residence = v025, eligible, time_outcome, event_label,
+  #          wealth = v190, sex = b4, bord, anc = m14, delivery = m15, curr_age = b8,
+  #          meduc = v106, hhsize = v136, religion = v130, ethnicity = v131,
+  #          curr_marital = v501, occupation = v717) |>
+  #   select(-occupation, -curr_marital, -ethnicity, -religion) |>
+  #   na.omit()
+  # mvs(d3)
+  }
 
 b1 <- brm(time_outcome | weights(wt) + cens(event_label) ~
             eligible + residence + wealth + sex + bord + anc + delivery + meduc + hhsize,
