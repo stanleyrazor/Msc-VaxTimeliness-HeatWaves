@@ -9,11 +9,8 @@ pacman::p_load(dplyr, tidyr, lubridate, terra, stringr, zoo, purrr, mev,
 theme_use <- theme_bw(base_family = 'Times New Roman') +
   theme(panel.grid = element_line(0))
 
+# function for missingness analysis
 mvs <- naniar::miss_var_summary
-# CDF of GEV
-# pgev <- \(y, xi, tau, eta, sigma = 1) {
-#   exp(-(1 + xi * sqrt(tau * sigma) * (y - eta))^(-1 / xi))
-# }
 
 # Notes -------------------------------------------------------------------
 
@@ -25,7 +22,8 @@ mvs <- naniar::miss_var_summary
 # use 1940:2019 for model fitting
 
 
-# Data --------------------------------------------------------------------
+
+# Pixel-level analysis ----------------------------------------------------
 
 # Test: only test years: 2020-2024
 {
@@ -69,7 +67,7 @@ mvs <- naniar::miss_var_summary
   rm(t1, t2, t3); gc()
 }
 
-# plotting max for sample pixel: 2.5 | 3.5
+# sample plotting max for sample pixel: 2.5 | 3.5
 t4 |> filter(x == 2.5 & y == 3.5) |>
   ggplot() +
   geom_line(aes(x = as.numeric(year), y = max)) +
@@ -86,8 +84,7 @@ t4 |>
   theme_use
 
 
-
-# fitting Stationary GEV per location -------------------------------------
+# fitting Stationary GEV per pixel -------------------------------------
 
 # x <- t4 |> filter(x == 2.5 & y == 3.5)
 # f1 <- fit.gev(x$max); f1
@@ -124,7 +121,7 @@ ggplot(s2 |> filter(date == '2024-03-31'),
   geom_tile(aes(fill = heatwave)) +
   theme_use
 
-# Fitting non-stationary GEV ----------------------------------------------
+# Fitting non-stationary GEV per pixel -------------------------------------
 
 t5 <- t4 |> mutate(year = as.numeric(year) - 2019)
 
@@ -280,7 +277,7 @@ for (i in 1:length(split_data)) {
   else nonstationary_est <- bind_rows(nonstationary_est, tmp_data)
 }
 
-# merging the stationary fit with the test data
+# merging the model fit with the test data
 s1 <- merge(test |> mutate(year = year(time) - 2019),
             nonstationary_est, by = c('cluster', 'residence'), all.x = T)
 
@@ -410,7 +407,7 @@ for (i in 1:length(split_data)) {
   else nonstationary_est <- bind_rows(nonstationary_est, tmp_data)
 }
 
-# merging the stationary fit with the test data
+# merging the model fit with the test data
 s1 <- merge(test |> mutate(year = year(time) - 2019),
             nonstationary_est, by = c('GID_2'), all.x = T)
 
