@@ -24,7 +24,7 @@ setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 # processed temperature data - at areal level (zonal aggregation)
 cds_areal <- arrow::read_parquet('data/processed/admin2-processed.parquet')
-cds_areal$heatwave <- cds_areal$p >= .95
+cds_areal$heatwave <- cds_areal$p >= .9
 
 cds_areal <- merge(g2, cds_areal, by = 'GID_2', all.x = T)
 cds_areal <- cds_areal |> mutate(cluster = as.character(cluster))
@@ -33,10 +33,10 @@ setDT(cds_areal); setkey(cds_areal, cluster, date)
 # -------------------------------------------------------------------------
 
 # was penta3
-bcg <- ldata[['mcv2']]; setDT(bcg)
+vax_data <- ldata[['penta3']]; setDT(vax_data)
 
 # the 14-day window bound
-bcg[, `:=`(
+vax_data[, `:=`(
   start_dt = due_date - 7,
   end_dt   = due_date + 7,
   cluster  = as.character(cluster)
@@ -44,38 +44,65 @@ bcg[, `:=`(
 
 # find all rows in cds_geoloc where cluster matches AND date is between start/end
 # and sum the 'heatwave' column for @ child
-results <- cds_areal[bcg, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
-               .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
-               by = .EACHI]
+# results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+#                .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+#                by = .EACHI]
+results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                      .(p = mean(p, na.rm = TRUE)),
+                      by = .EACHI]
 
-bcg$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
-(table(bcg$heatwave))
+# vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
+vax_data$heatwave <- results$p
+(table(vax_data$heatwave))
 
-bcg <- as.data.frame(bcg) |>
-  mutate(meduc = as.character(meduc) |> as.factor())
+# vax_data <- as.data.frame(vax_data) |>
+#   mutate(meduc = as.character(meduc) |> as.factor())
 
 # Model -------------------------------------------------------------------
 
-b3 <- brm(time_outcome | weights(wt) + cens(outcome_event) ~
-            heatwave + residence + wealth + sex + bord + delivery + meduc + hhsize,
-          family = weibull(),
-          data = bcg |> mutate(time_outcome = ifelse(time_outcome == 0, .01, time_outcome)),
+b3 <- brm(
+  time_outcome | weights(wt) + cens(outcome_event) ~ heatwave + residence + (1 | caseid),
 
-          chains = 4,
-          iter = 1000,
-          warmup = 500
+  family = weibull(),
+  data = vax_data |> mutate(time_outcome = ifelse(time_outcome == 0, 1, time_outcome)),
+
+  chains = 4,
+  iter = 2000,
+  warmup = 1000
 )
 
 summary(b3)
 conditional_effects(b3, "heatwave")
+bayesplot::pp_check(b3)
 
 # conditional effects for timeliness
-pred <- avg_predictions(b3, by = "heatwave", wts = 'wt')
-draws <- get_draws(pred, "rvar") # rvar format for posterior package
+# type response - ignores individual residual randomness | prediction - incorporates it
+# rvar format for posterior package
+pred <- avg_predictions(b3, newdata = vax_data,
+                        re_formula = NULL, type = 'response', by = "heatwave", wts = 'wt')
+draws <- get_draws(pred, "rvar")
 
+quantile2(draws$rvar, c(0.025, 0.5, 0.975)) # posterior quantiles
 E(draws$rvar) # expected value of posterior dist
-quantile2(draws$rvar, c(0.05, 0.5, 0.95)) # posterior quantiles
-Pr(draws$rvar <= (16*7)) # posterior mass below 16*7
+Pr(draws$rvar <= ((4 * 7))) # posterior mass below 9 months + 2 week buffer
+
+# Posterior predictions and quantiles
+pp <- posterior_predict(b3, newdata = vax_data, re_formula = NULL)
+tvax_mean <- colMeans(pp)
+aggregate(tvax_mean ~ vax_data$heatwave, FUN = mean)
+
+timely_draws <- pp <= 28
+timely_prob <- colMeans(timely_draws)
+aggregate(timely_prob ~ vax_data$heatwave, FUN = mean)
+
+
+predictions(
+  b3,
+  newdata = datagrid(heatwave = c('absent', 'present'),
+                     caseid = unique),
+  by = "heatwave",
+  re_formula = NULL
+)
 
 # Marginal effects --------------------------------------------------------
 
@@ -101,14 +128,15 @@ a2 <- avg_predictions(
 a2
 
 # Manual computation of marginal effects: averaging over.
-abs <- bcg |> mutate(heatwave = 'absent')
-prs <- bcg |> mutate(heatwave = 'present')
+x <- vax_data |> mutate(pred = colMeans(posterior_epred(b3))) |> select(time_outcome, pred, everything())
+abs <- vax_data |> mutate(heatwave = 'absent')
+prs <- vax_data |> mutate(heatwave = 'present')
 
 abspred <- posterior_epred(b3, newdata = abs) |> colMeans() |> as.numeric()
 prspred <- posterior_epred(b3, newdata = prs) |> colMeans() |> as.numeric()
 
-weighted.mean(abspred, bcg$wt)
-weighted.mean(prspred, bcg$wt)
+weighted.mean(abspred, vax_data$wt)
+weighted.mean(prspred, vax_data$wt)
 
 mean(abspred)
 mean(prspred)
@@ -118,7 +146,7 @@ mean(prspred)
 p_matrix <- posterior_epred(b3, newdata = prs)
 
 # 2. Calculate the weighted mean for EACH of the 4000 draws
-draw_means <- apply(p_matrix, 1, \(row) weighted.mean(row, w = bcg$wt))
+draw_means <- apply(p_matrix, 1, \(row) weighted.mean(row, w = vax_data$wt))
 
 # 3. Take the mean of those 4000 results
 mean(draw_means)
