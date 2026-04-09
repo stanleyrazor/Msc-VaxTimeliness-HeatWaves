@@ -37,6 +37,7 @@ make_vax_one <- function(d1, vaccine, identifier, period, timeframe = c("weeks",
       time_outcome = ifelse(!is.na(event_time), event_time, censor_time),
       time_outcome = pmax(0, time_outcome),
 
+      # 0 - event | -1 - left censored | 1 - right censored
       outcome_event = case_when(
         .data[[identifier]] == 1 ~ 0L,
         .data[[identifier]] %in% c(2, 3) ~ -1L,

@@ -1,7 +1,8 @@
 
 # reading KE-DHS data & trying vaccine timeliness on Measles
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
-               ggpubr, dplyr, haven, ggplot2, janitor, lubridate, stringr)
+               ggpubr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
+               ggsurvfit, icenReg)
 mvs <- naniar::miss_var_summary
 
 # Data --------------------------------------------------------------------
@@ -13,8 +14,9 @@ shp <- readRDS('data/shp/gadm/gadm41_NGA_2_pk.rds') |> st_as_sf() |> select(GID_
 g2 <- st_join(g1, shp[, "GID_2"], left = TRUE) |> st_drop_geometry()
 
 
-# vax-data: saved preciously
+# ldata - vax-data | cdata - covariates
 ldata <- readRDS('data/processed/vaxdata-components.rds')
+cdata <- readRDS('data/processed/dhs-covariates.rds')
 
 # processed temperature data - at pixel level (buffered)
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
@@ -30,10 +32,11 @@ cds_areal <- merge(g2, cds_areal, by = 'GID_2', all.x = T)
 cds_areal <- cds_areal |> mutate(cluster = as.character(cluster))
 setDT(cds_areal); setkey(cds_areal, cluster, date)
 
-# -------------------------------------------------------------------------
 
-# was penta3
-vax_data <- ldata[['penta3']]; setDT(vax_data)
+# Merging -----------------------------------------------------------------
+
+vax_data <- ldata[['vita1']]; setDT(vax_data)
+vax_used_folder <- 'output/img/vita1/'
 
 # the 14-day window bound
 vax_data[, `:=`(
@@ -44,115 +47,377 @@ vax_data[, `:=`(
 
 # find all rows in cds_geoloc where cluster matches AND date is between start/end
 # and sum the 'heatwave' column for @ child
-# results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
-#                .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
-#                by = .EACHI]
 results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
-                      .(p = mean(p, na.rm = TRUE)),
-                      by = .EACHI]
+               .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+               by = .EACHI]
 
-# vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
-vax_data$heatwave <- results$p
+vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
 (table(vax_data$heatwave))
 
-# vax_data <- as.data.frame(vax_data) |>
-#   mutate(meduc = as.character(meduc) |> as.factor())
+# merging with covariates
+vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
+                  , cdata |> mutate(wt = as.character(wt)),
+                  by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
+
+vax_data <- vax_data |> filter(!is.na(num_anc_visits)) |>
+  mutate(wt = as.numeric(wt),
+         # across(where(is.factor), as.character)
+         )
+
+# 0 - event | -1 - left censored | 1 - right censored
+
+
+
+# Data exploration --------------------------------------------------------
+
+glimpse(vax_data)
+
+vax_data_plot <- vax_data |>
+  mutate(
+    outcome_event = case_when(
+      outcome_event == 0 ~ 1,
+      outcome_event == 1 ~ 0,
+      outcome_event == -1 ~ 2
+    ),
+
+    time_start = case_when(
+      outcome_event == 2 ~ (6*30)-7,            # Left: happened between birth and now / penta 3 always given as at 14*7 days
+      outcome_event == 0 ~ time_outcome,    # Right: started at interview, ends never
+      outcome_event == 1 ~ time_outcome     # Exact: happened at this time
+    ),
+
+    time_end = case_when(
+      outcome_event == 2 ~ time_outcome,    # Left: upper bound is interview
+      outcome_event == 0 ~ NA_real_,        # Right: no upper bound
+      outcome_event == 1 ~ time_outcome     # Exact: same as start
+    )
+  ) |>
+  rename(
+    "Heatwave" = heatwave,
+    "BirthOrder" = birth_order,
+    "ANCVisits" = num_anc_visits,
+    "PlaceDelivery" = place_delivery,
+    "ChildGender" = child_gender,
+    "MotherOccupation" = mother_occupation,
+    "TimeHealthFacility" = time_to_hf,
+    "WealthIndex" = wealth_index,
+    "MotherEducation" = meduc,
+    "MotherAge" = mother_age_group
+  )
+
+# kaplan meier plots based on: heatwave, birth order, anc, delivery, gender, occupation, time to hf, wealth, education, mother age
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ 1,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  labs(
+    title = "Cumulative Vaccination Coverage",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+ggsave(filename = paste0(vax_used_folder, "overall.png"), height = 10, width = 10, dpi = 1000)
+
+# heatwaves
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ Heatwave,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Heatwave",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "heatwave.png"), height = 8, width = 8, dpi = 1000)
+
+# Birth Order
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ ANCVisits,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By ANC Visits",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "ANC Visits.png"), height = 10, width = 10, dpi = 1000)
+
+# place of delivery
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ PlaceDelivery,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Place of Delivery",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Place of delivery.png"), height = 10, width = 10, dpi = 1000)
+
+# Child Gender
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ ChildGender,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Child's Gender",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Child Gender.png"), height = 10, width = 10, dpi = 1000)
+
+# Mother Occupation
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ MotherOccupation,
+                   data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  # add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Mother's Occupation",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Mother Occupation.png"), height = 10, width = 10, dpi = 1000)
+
+
+# Time to Health Facility
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ TimeHealthFacility,
+        data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  # add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Time to Health Facility",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Time to Health Facility.png"), height = 10, width = 10, dpi = 1000)
+
+
+# Wealth Index
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ WealthIndex,
+        data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  # add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Wealth Index",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Wealth Index.png"), height = 10, width = 10, dpi = 1000)
+
+
+# Mother Education
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ MotherEducation,
+        data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Mother's Eduction Attainment",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Mother Education.png"), height = 10, width = 10, dpi = 1000)
+
+
+# Mother Education
+survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ MotherAge,
+        data = vax_data_plot) |>
+  ggsurvfit(type = "risk") +
+  # add_confidence_interval() +
+  add_censor_mark(shape = '+') +
+  scale_ggsurvfit(
+    x_scales = list(breaks = seq(0, 1050, 100)),
+    y_scales = list(labels = scales::percent, limits = c(0, 1))
+  ) +
+  add_risktable(
+    risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                        "{format(round(n.event, 0), nsmall = 0)}"),
+    stats_label = c("At risk",
+                    "Events")
+  ) +
+  theme_ggsurvfit_KMunicate() +
+  theme(legend.position = 'bottom') +
+  labs(
+    title = "Cumulative Vaccination Coverage By Mother's Age",
+    x = "Time since birth (days)",
+    y = "Probability of Being Vaccinated"
+  )
+
+ggsave(filename = paste0(vax_used_folder, "Mother Age.png"), height = 10, width = 10, dpi = 1000)
+
+
+
 
 # Model -------------------------------------------------------------------
 
-b3 <- brm(
-  time_outcome | weights(wt) + cens(outcome_event) ~ heatwave + residence + (1 | caseid),
+b1 <- brm(
+  time_outcome | weights(wt) + cens(outcome_event) ~
+
+    heatwave + residence + admin +
+
+    birth_order + num_anc_visits + place_delivery + child_gender +
+    mother_occupation + time_to_hf + wealth_index + meduc + mother_age_birth,
+    #(1 | caseid),
 
   family = weibull(),
-  data = vax_data |> mutate(time_outcome = ifelse(time_outcome == 0, 1, time_outcome)),
+  data = vax_data, # |> mutate(time_outcome = ifelse(time_outcome == 0, 1, time_outcome)),
 
   chains = 4,
   iter = 2000,
   warmup = 1000
 )
 
-summary(b3)
-conditional_effects(b3, "heatwave")
-bayesplot::pp_check(b3)
+summary(b2)
+conditional_effects(b2, "heatwave")
+bayesplot::pp_check(b1)
 
 # conditional effects for timeliness
 # type response - ignores individual residual randomness | prediction - incorporates it
 # rvar format for posterior package
-pred <- avg_predictions(b3, newdata = vax_data,
+pred <- avg_predictions(b1, newdata = vax_data,
                         re_formula = NULL, type = 'response', by = "heatwave", wts = 'wt')
 draws <- get_draws(pred, "rvar")
 
 quantile2(draws$rvar, c(0.025, 0.5, 0.975)) # posterior quantiles
 E(draws$rvar) # expected value of posterior dist
-Pr(draws$rvar <= ((4 * 7))) # posterior mass below 9 months + 2 week buffer
+Pr(draws$rvar <= ((14+2)*7)) # posterior mass below 9 months + 2 week buffer
 
 # Posterior predictions and quantiles
-pp <- posterior_predict(b3, newdata = vax_data, re_formula = NULL)
+pp <- posterior_predict(b1, newdata = vax_data, re_formula = NULL)
 tvax_mean <- colMeans(pp)
 aggregate(tvax_mean ~ vax_data$heatwave, FUN = mean)
 
-timely_draws <- pp <= 28
+timely_draws <- pp <= ((14+2)*7)
 timely_prob <- colMeans(timely_draws)
 aggregate(timely_prob ~ vax_data$heatwave, FUN = mean)
 
 
 predictions(
-  b3,
+  b2,
   newdata = datagrid(heatwave = c('absent', 'present'),
                      caseid = unique),
   by = "heatwave",
   re_formula = NULL
 )
-
-# Marginal effects --------------------------------------------------------
-
-library(marginaleffects)
-
-# define a function that returns timeliness
-fn_timely <- function(vec) as.integer(vec <= (16*7))
-
-# Average predicted timeliness
-a1 <- avg_predictions(b3, variables = "heatwave", type = "response", wts = 'wt'); a1
-a2 <- avg_predictions(b3, variables = "heatwave", type = "response",
-                      transform = fn_timely, wts = 'wt'); a2
-
-threshold <- (16 * 7)
-# 112 days = 16 weeks
-threshold <- 112
-
-a2 <- avg_predictions(
-  b3, variables = "heatwave",
-  comparison = function(x, ...) mean(x <= threshold),
-  wts = "wt"
-)
-a2
-
-# Manual computation of marginal effects: averaging over.
-x <- vax_data |> mutate(pred = colMeans(posterior_epred(b3))) |> select(time_outcome, pred, everything())
-abs <- vax_data |> mutate(heatwave = 'absent')
-prs <- vax_data |> mutate(heatwave = 'present')
-
-abspred <- posterior_epred(b3, newdata = abs) |> colMeans() |> as.numeric()
-prspred <- posterior_epred(b3, newdata = prs) |> colMeans() |> as.numeric()
-
-weighted.mean(abspred, vax_data$wt)
-weighted.mean(prspred, vax_data$wt)
-
-mean(abspred)
-mean(prspred)
-
-
-# 1. Use epred to get the 4000 x N matrix
-p_matrix <- posterior_epred(b3, newdata = prs)
-
-# 2. Calculate the weighted mean for EACH of the 4000 draws
-draw_means <- apply(p_matrix, 1, \(row) weighted.mean(row, w = vax_data$wt))
-
-# 3. Take the mean of those 4000 results
-mean(draw_means)
-# This should now match 1095 much more closely
-
-
-
-
-

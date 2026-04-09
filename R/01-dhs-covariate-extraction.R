@@ -35,12 +35,32 @@ d2 <- d1 |>
 
     # mother's age at birth: current age - child current age
     mother_age_birth = m_current_age - floor(child_age / 12),
+    mother_age_group = case_when(
+      mother_age_birth <= 19 ~ '<=19 yrs',
+      mother_age_birth %in% 20:24 ~ '20-24 yrs',
+      mother_age_birth %in% 25:29 ~ '25-29 yrs',
+      mother_age_birth %in% 30:34 ~ '30-34 yrs',
+      mother_age_birth %in% 35:39 ~ '35-39 yrs',
+      mother_age_birth %in% 40:44 ~ '40-44 yrs',
+      T ~ '45+ yrs'
+    ),
+    mother_age_group = factor(mother_age_group,
+                              levels = c('<=19 yrs','20-24 yrs','25-29 yrs','30-34 yrs',
+                                         '35-39 yrs','40-44 yrs','45+ yrs')),
 
     # facility
-    place_delivery = ifelse(place_delivery %in% c(10, 11, 12, 90, 96), 'home', 'institution'),
+    place_delivery = ifelse(place_delivery %in% c(10, 11, 12, 90, 96), 'Home', 'Institution'),
 
     # changing everything to factor
     across(everything(), as_factor),
+
+    # wealth index
+    wealth_index = str_to_title(wealth_index),
+    wealth_index = factor(wealth_index, levels = c("Poorest", "Poorer", "Middle", "Richer", "Richest")),
+
+    # meduc
+    meduc = str_to_title(meduc),
+    meduc = factor(meduc, levels = c("No Education", "Primary", "Secondary", "Higher")),
 
     # ANC visits categorization
     num_anc_visits = as.character(num_anc_visits),
@@ -52,6 +72,8 @@ d2 <- d1 |>
       num_anc_visits == "don't know" ~ "Unknown visits",
       T ~ NA
     ),
+    num_anc_visits = factor(num_anc_visits, levels = c('0 visits',"1-4 visits","5-8 visits",
+                                                       "9+ visits","Unknown visits")),
 
     # travel time to nearest facility
     time_to_hf = case_when(
@@ -61,6 +83,8 @@ d2 <- d1 |>
       time_to_hf %in% c('600+', as.character(121:600)) ~ "2+ hrs",
       T ~ NA
     ),
+    time_to_hf = factor(time_to_hf, levels = c("<30 mins","31-60 mins","1-2 hrs",
+                                               "2+ hrs")),
 
     # numeric variables
     across(c(birth_order, mother_age_birth, child_age), \(x) x |> as.character() |> as.numeric())
