@@ -3,10 +3,10 @@
 
 1. `data` folder contains all datasets: 
 
-- cds contains CDS ERA5 Data
-- dhs contains DHS data (git-ignored) for now, 
-- processed contains any dataset generated during the analysis and 
-- shp contains shapefiles data.
+- `cds` contains CDS ERA5 Data
+- `dhs` contains DHS data (git-ignored) for now, 
+- `processed` contains any dataset generated during the analysis and 
+- `shp` contains shapefiles data.
 
 2. `output` folder contains any documents, slides/presentations, manuscripts and plot images generated from analysis
 3. `R` contains r scripts for doing analysis:
