@@ -13,7 +13,6 @@ g1 <- st_read("data/dhs/NG_2024_DHS_03262026_919_211396/NGGE8AFL/NGGE8AFL.shp") 
 shp <- readRDS('data/shp/gadm/gadm41_NGA_2_pk.rds') |> st_as_sf() |> select(GID_2)
 g2 <- st_join(g1, shp[, "GID_2"], left = TRUE) |> st_drop_geometry()
 
-
 # ldata - vax-data | cdata - covariates
 ldata <- readRDS('data/processed/vaxdata-components.rds')
 cdata <- readRDS('data/processed/dhs-covariates.rds')
@@ -24,13 +23,13 @@ cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
 cds_geoloc$heatwave <- cds_geoloc$p >= .9
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
-# processed temperature data - at areal level (zonal aggregation)
-cds_areal <- arrow::read_parquet('data/processed/admin2-processed.parquet')
-cds_areal$heatwave <- cds_areal$p >= .9
-
-cds_areal <- merge(g2, cds_areal, by = 'GID_2', all.x = T)
-cds_areal <- cds_areal |> mutate(cluster = as.character(cluster))
-setDT(cds_areal); setkey(cds_areal, cluster, date)
+# IN CASE WE NEED IT: processed temperature data - at areal level (zonal aggregation)
+# cds_areal <- arrow::read_parquet('data/processed/admin2-processed.parquet')
+# cds_areal$heatwave <- cds_areal$p >= .9
+#
+# cds_areal <- merge(g2, cds_areal, by = 'GID_2', all.x = T)
+# cds_areal <- cds_areal |> mutate(cluster = as.character(cluster))
+# setDT(cds_areal); setkey(cds_areal, cluster, date)
 
 
 # Merging -----------------------------------------------------------------
@@ -65,8 +64,6 @@ vax_data <- vax_data |> filter(!is.na(num_anc_visits)) |>
          )
 
 # 0 - event | -1 - left censored | 1 - right censored
-
-
 
 # Data exploration --------------------------------------------------------
 

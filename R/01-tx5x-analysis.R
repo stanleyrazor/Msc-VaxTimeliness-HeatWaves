@@ -14,14 +14,8 @@ mvs <- naniar::miss_var_summary
 
 # Notes -------------------------------------------------------------------
 
-# numpixel*daily for one year gives: 872,910.
-# for 85 years it is 74,197,350 rows (not possible to operate this on my machine)
-# for simplification we compute tx5x on annual - ignore chaining at year ends
-
 # 2020-12-06 is earliest birth day possible in DHS. Thus, model fitting should only use data before this period.
 # use 1940:2019 for model fitting
-
-
 
 # Pixel-level analysis ----------------------------------------------------
 
@@ -84,44 +78,7 @@ t4 |>
   theme_use
 
 
-# fitting Stationary GEV per pixel -------------------------------------
-
-# x <- t4 |> filter(x == 2.5 & y == 3.5)
-# f1 <- fit.gev(x$max); f1
-
-stationary_est <- t4 |>
-  group_by(x, y) |>
-  reframe(
-    loc = fit.gev(max)$estimate[1],
-    scale = fit.gev(max)$estimate[2],
-    shape = fit.gev(max)$estimate[3]
-  )
-
-# plot to understand:
-# plot(seq(from = 25, to = 40, length = 1e3),
-#      dgev(seq(from = 25, to = 40, length = 1e3),
-#           loc = 33.80914, scale = 1.1128443, shape = -0.4762559),
-#      type = 'l')
-# abline(v = 36.34209, col = 'red')
-
-# merging the stationary fit with the test data
-s1 <- merge(test, stationary_est, by = c('x', 'y'), all.x = T)
-
-# computing Pr(Y <= y) and return period. Also heatwave = p > 0.95
-s2 <- s1 |>
-  mutate(
-    p = mev::pgev(q = values, loc = loc, scale = scale, shape = shape, lower.tail = T),
-    return = 1 / (1 - p),
-    heatwave = p >= .95
-  )
-
-# plotting date with highest number of heatwaves
-ggplot(s2 |> filter(date == '2024-03-31'),
-       aes(x = x, y = y)) +
-  geom_tile(aes(fill = heatwave)) +
-  theme_use
-
-# Fitting non-stationary GEV per pixel -------------------------------------
+# Time series GEV on pixels -------------------------------------
 
 t5 <- t4 |> mutate(year = as.numeric(year) - 2019)
 
@@ -170,7 +127,7 @@ ggplot(s2 |> filter(date == '2024-03-30'),
   theme_use
 
 
-# DHS Geo-code for first stage triangulation ------------------------------
+# DHS Geo-code level analysis  --------------------------------------
 
 # the cluster geo codes
 g1 <- st_read("data/dhs/NG_2024_DHS_03262026_919_211396/NGGE8AFL/NGGE8AFL.shp") |>
@@ -296,7 +253,7 @@ s2 <- s1 |>
 arrow::write_parquet(x = s2, sink = 'data/processed/cluster-processed.parquet')
 
 
-# Admin-2 processing ------------------------------------------------------
+# Admin-2 level analysis ------------------------------------------------------
 
 # the cluster geo codes
 g1 <- st_read("data/dhs/NG_2024_DHS_03262026_919_211396/NGGE8AFL/NGGE8AFL.shp") |>
@@ -386,7 +343,7 @@ train |>
        x = 'Year', y = 'Annual Maximum Tx5x') +
   theme_use
 
-# Time-series GEV on clusters ---------------------------------------------
+# Time-series GEV on admin 2 areas ---------------------------------------------
 
 d3 <- train |> mutate(year = as.numeric(year) - 2019)
 

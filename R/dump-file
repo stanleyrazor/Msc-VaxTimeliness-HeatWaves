@@ -851,3 +851,45 @@ ldata <- list(
 
 saveRDS(ldata, "data/processed/vaxdata-components.rds")
 
+
+
+
+
+
+# fitting Stationary GEV per pixel -------------------------------------
+
+# x <- t4 |> filter(x == 2.5 & y == 3.5)
+# f1 <- fit.gev(x$max); f1
+
+stationary_est <- t4 |>
+  group_by(x, y) |>
+  reframe(
+    loc = fit.gev(max)$estimate[1],
+    scale = fit.gev(max)$estimate[2],
+    shape = fit.gev(max)$estimate[3]
+  )
+
+# plot to understand:
+# plot(seq(from = 25, to = 40, length = 1e3),
+#      dgev(seq(from = 25, to = 40, length = 1e3),
+#           loc = 33.80914, scale = 1.1128443, shape = -0.4762559),
+#      type = 'l')
+# abline(v = 36.34209, col = 'red')
+
+# merging the stationary fit with the test data
+s1 <- merge(test, stationary_est, by = c('x', 'y'), all.x = T)
+
+# computing Pr(Y <= y) and return period. Also heatwave = p > 0.95
+s2 <- s1 |>
+  mutate(
+    p = mev::pgev(q = values, loc = loc, scale = scale, shape = shape, lower.tail = T),
+    return = 1 / (1 - p),
+    heatwave = p >= .95
+  )
+
+# plotting date with highest number of heatwaves
+ggplot(s2 |> filter(date == '2024-03-31'),
+       aes(x = x, y = y)) +
+  geom_tile(aes(fill = heatwave)) +
+  theme_use
+
