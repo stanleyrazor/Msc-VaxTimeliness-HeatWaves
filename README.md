@@ -14,6 +14,7 @@
 - `01-allvax-extraction` contains codes for extracting antigens data from DHS.
 - `01-cds-data-fetch` contains codes for extracting CDS ERA5 data using their API and R package
 - `01-tx5x-analysis` contains codes for analyzing CDS ERA5 data and computing heatwaves
+- `o1-dhs-covariates-extraction` contains codes for extracting covariate information from DHS
 - `01-merge-N-model` contains codes for merging ERA5 data and DHS data and the model code itself
 - `dump-file` for dumping code I might regret deleting later
 
