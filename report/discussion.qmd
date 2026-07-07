@@ -1,0 +1,27 @@
+# Discussion
+
+Main Report – Discussion
+
+This section should be a summary of what the results show, along with an explanation of their meaning. The results should be analysed in the context of other published work; and the reason(s) for any negative results (or unsuccessful experiments) should be considered.
+
+
+Main Report – Recommendations
+
+The discussion should end with a paragraph linking the current findings with recommendations for further work. However, it may be appropriate to present the recommendations as a separate section. Your recommendations must follow from your findings and your analysis of them, and not simply be a list of unrelated ‘good ideas’.
+
+
+===
+
+Lorem Ipsum
+"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."
+"There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..."
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque est felis, lacinia a eros ut, venenatis aliquam ante. Quisque posuere purus eget est consectetur, id lobortis nibh lobortis. Integer varius eros ligula, non imperdiet diam euismod a. Etiam ligula odio, ornare a lacus nec, viverra dignissim leo. Maecenas laoreet elit vel leo lacinia, eget maximus erat cursus. Ut gravida velit dui, quis porttitor ipsum posuere sit amet. Sed sed varius urna, eu auctor leo. Mauris ultrices vestibulum mi, vel luctus elit efficitur faucibus. Integer scelerisque erat vitae tellus faucibus, sit amet tincidunt mi cursus. Integer semper rhoncus massa, sed luctus metus gravida eget. Ut a libero accumsan, laoreet turpis in, bibendum sem. Vivamus iaculis massa sed dui tincidunt dapibus. Vivamus posuere fringilla imperdiet. Pellentesque sollicitudin lectus mauris, vitae blandit turpis egestas vitae.
+
+In sed velit ac velit auctor ullamcorper a eget ante. Vestibulum et scelerisque sem. Integer ut mattis massa, nec luctus mauris. Etiam nec ligula eget velit vehicula fermentum. Cras ipsum est, varius in mollis eu, tincidunt eu purus. Nullam augue turpis, congue sit amet ligula ac, pellentesque gravida erat. Phasellus vitae hendrerit ligula. Proin aliquet velit justo, nec iaculis sem semper id. Duis lacinia quam in tempor cursus. Mauris nec ipsum eget metus finibus imperdiet. Etiam mollis iaculis justo, eget tristique nulla pulvinar eget. Mauris rutrum, nisi at pretium dictum, justo libero fringilla ipsum, nec luctus mi dui non magna. Integer quis nisl commodo, blandit dui quis, fringilla libero.
+
+Fusce vitae ipsum eros. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse orci tortor, dictum et faucibus ut, tempus quis ipsum. Donec egestas leo ac est maximus, eu placerat mauris ornare. Curabitur tempor leo et elit auctor finibus. Quisque sit amet mi finibus, venenatis enim vitae, convallis dui. Suspendisse fringilla nibh ac lorem fringilla dictum. Aenean pellentesque nulla id erat varius faucibus. Vestibulum non sapien gravida mi eleifend commodo ac at velit. Integer semper ultricies scelerisque. Nunc aliquet porttitor eleifend. Nulla blandit dapibus fermentum. In scelerisque sem ipsum, a vestibulum dolor consequat et.
+
+Pellentesque ut ornare lectus, bibendum eleifend ante. Mauris pulvinar maximus leo, id pulvinar nisl interdum eget. Nam iaculis aliquam nunc ac porttitor. Curabitur pharetra felis et varius ornare. Aenean posuere efficitur semper. Donec pharetra purus et ex porta vehicula. Mauris massa leo, pellentesque a congue porttitor, vehicula et purus. Nunc dapibus turpis metus, faucibus malesuada odio vehicula eget. Maecenas hendrerit ac ipsum ut porta.
+
+Cras erat felis, lobortis nec tellus eu, auctor maximus nulla. Donec feugiat quam nulla, ut ultricies ante congue a. Curabitur hendrerit nunc at quam condimentum, non maximus enim consequat. Donec iaculis interdum pharetra. Aliquam erat volutpat. Morbi tempor imperdiet sem, vitae pulvinar eros suscipit id. Etiam laoreet enim eu sapien venenatis, at vehicula orci porta. Ut nec magna rhoncus, congue nibh sit amet, elementum purus. Aliquam erat volutpat. Nam iaculis lorem eros, a pharetra arcu vehicula sed. Maecenas nec metus at nulla interdum convallis. Nam vel ultrices ipsum. Phasellus commodo est ut sollicitudin pharetra. 

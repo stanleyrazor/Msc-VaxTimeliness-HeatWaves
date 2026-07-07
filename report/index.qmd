@@ -1,0 +1,10 @@
+# Abstract {.unnumbered .unlisted}
+
+> All project reports should include a structured Abstract, not exceeding 300 words, on a single standalone page just after the Contents. This should appear before the main body of the project report (which will start with the introduction).
+
+> The Abstract may be structured into four key sections: - Background – summarising the problem being considered. - Methods – describing how the study was performed. - Results – listing the salient results. - Conclusions – stating the principal conclusions.
+
+
+# Acknowledgements {.unnumbered .unlisted}
+
+> Your project report should include an Acknowledgements section, before the Introduction to your work proper. Detailed guidance on what to put in the Acknowledgements section is given in Section 12.1

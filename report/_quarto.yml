@@ -1,0 +1,65 @@
+project:
+  type: book
+
+book:
+  # edit line below...
+  title: "Examining the Timeliness of Routine Vaccination During Heatwaves."
+  image: "img/lshtm_logo.jpg"
+  date-format: "MMMM YYYY"
+  date: today
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - methods.qmd
+    - results.qmd
+    - discussion.qmd
+    - references.qmd
+    - appendices.qmd
+  # edit line below...
+  output-file: "493736_MedStats_2026_Project"
+
+bibliography: references.bib
+csl: vancouver.csl
+
+################################################
+#   Title page metadata - edit accordingly     #
+################################################
+candidate-number: "493736"
+msc-course: "Medical Statistics"
+academic-year: "2025-26"
+page-count: "0"
+project-length: "Standard" # Extended (MSc IID only)
+################################################
+
+format:
+  pdf:
+    include-in-header: chapskip.tex
+    keep-tex: false
+    documentclass: scrreprt
+    toc: true
+    toc-depth: 2
+    toc-title: "Table of contents"
+    # lof: false
+    # lot: false
+    number-sections: true
+    number-depth: 2
+    papersize: a4
+    geometry:
+      - inner=2.54cm
+      - outer=2.54cm
+      - top=2.54cm
+      - bottom=2.54cm
+      - headsep=22pt
+      - headheight=1pt
+      - footskip=33pt
+      - ignorehead
+      - ignorefoot
+      - heightrounded
+    indent: false
+    linestretch: 1.5
+    fontsize: 11pt
+    mainfont: "Arial"
+    sansfont: "Arial"
+    monofont: "Courier New"
+    template-partials:
+      - before-body.tex
