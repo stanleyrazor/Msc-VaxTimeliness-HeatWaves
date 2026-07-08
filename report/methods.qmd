@@ -109,7 +109,7 @@ gev stuff again, (return level: 15 year, 5 year) gpd stuff with 95%, 90% 99%
 
 ## Statistical analysis
 
-For any given antigen, we construct the appropriate dataset by only including children who have attained the antigen time of vaccination, and for a child $i$, we let $Y_i$ represent the binary outcome variable for vaccine delay, which we code as 1 if the child has the vaccine delay, and 0 if not, $Z_i$ represent the matrix of selected covariates, including the intercept, and $X_i$ represent the binary exposure variable (heatwave), the model is given as follow s:
+For any given antigen, we construct the appropriate dataset by only including children who have attained the antigen time of vaccination, and for a child $i$, we let $Y_i$ represent the binary outcome variable for vaccine delay, which we code as 1 if the child has the vaccine delay, and 0 if not, $Z_i$ represent the matrix of selected covariates, including the intercept, and $X_i$ represent the binary exposure variable (heatwave), the model is given as follows:
 
 $$Y_t \sim Bernoulli(\pi_i)$$ $$\log(\frac{p_i}{1-p_i})=Z_i\cdot\beta+X_i\cdot\gamma$$
 

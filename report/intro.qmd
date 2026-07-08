@@ -2,39 +2,22 @@
 
 # Introduction
 
+## Background
 
-@misc{Hersbach2023ERA5,
-  author       = {Hersbach, H. and Bell, B. and Berrisford, P. and Biavati, G. and Horányi, A. and Muñoz Sabater, J. and Nicolas, J. and Peubey, C. and Radu, R. and Rozum, I. and Schepers, D. and Simmons, A. and Soci, C. and Dee, D. and Thépaut, J.-N.},
-  title        = {ERA5 Hourly Data on Single Levels from 1940 to Present},
-  year         = {2023},
-  publisher    = {Copernicus Climate Change Service (C3S) Climate Data Store (CDS)},
-  doi          = {10.24381/cds.adbb2d47},
-  url          = {https://doi.org/10.24381/cds.adbb2d47},
-  urldate      = {2026-07-02}
-}
+Globally, extreme weather events such as floods, coldwaves and heatwaves are on the rise. These extreme weather events are associated with a myriad of challenges in diverse fields such as in energy infrastructure, service delivery, agriculture and food production, healthcare, and in people's livelihoods, labour and work due to distress, which in turn lead to economic losses[@costello2009].
 
-> The start of the main content of your project report should be presented as a formal introductory section – which might typically account for between 10% and 30% of the overall word count.
->
-> -   This should give a detailed background of the work which has led up to the project, including a review of the literature if appropriate.
->
-> -   The Introduction should finish by describing the gap in knowledge that your aims and objectives will address.
+Global average near-surface temperatures have increased by approximately $1.4$ to $1.5$ degrees celsius above pre-industrial levels (1850-1900)[@adriansimmons2021]. The five-year average temperatures in the period 2020-2025 were recorded to be the highest on record, 2024 being the hottest year ever. This worsening situation is associated with the increased emission of Green House Gases (GHGs) over time, coupled with atmospheric and oceanic processes[@change2022; @adriansimmons2021].
 
-# Aims and Objectives
+The rise in surface temperatures often lead to the occurence of heateaves defined as unusually high temperatures extending over a number of days.
 
-> You should include a concise statement of your project report’s Aims (the overall goal of the work) and Objectives (what you hoped to be achieved during the project work itself). This section should normally consist of just a few lines. If your project has involved primary research, then it will be appropriate to indicate the specific research question or hypothesis addressed.
+The intensity and frequency of heatwaves is predicted to increase, unless measures are taken across all regions towards reducing GHG emissions, and strengthening infrastructure.
 
-A token reference to test the *references.bib* file and later References @hernán2010 Section: @hernán2010
+In healthcare, heatwaves have been associated with health system challenges such as in the storage of vaccines, medical equipments and drugs[@curtis2017; @carmichael2012], increase in heat related injury particularly among the elderly[@hajat2007], prolonged recovery by patients and an increase in in-patient mortality[@ferron2006; @stafoggia2008], and general excess mortality in several regions globally[@hundessa2025; @clarke2025; @he].
 
-Lorem Ipsum
-"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."
-"There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..."
+Heatwaves have also been associated with mental health conditions due to sleep disruption,
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque est felis, lacinia a eros ut, venenatis aliquam ante. Quisque posuere purus eget est consectetur, id lobortis nibh lobortis. Integer varius eros ligula, non imperdiet diam euismod a. Etiam ligula odio, ornare a lacus nec, viverra dignissim leo. Maecenas laoreet elit vel leo lacinia, eget maximus erat cursus. Ut gravida velit dui, quis porttitor ipsum posuere sit amet. Sed sed varius urna, eu auctor leo. Mauris ultrices vestibulum mi, vel luctus elit efficitur faucibus. Integer scelerisque erat vitae tellus faucibus, sit amet tincidunt mi cursus. Integer semper rhoncus massa, sed luctus metus gravida eget. Ut a libero accumsan, laoreet turpis in, bibendum sem. Vivamus iaculis massa sed dui tincidunt dapibus. Vivamus posuere fringilla imperdiet. Pellentesque sollicitudin lectus mauris, vitae blandit turpis egestas vitae.
+Nigeria has experienced heatwaves in the recent past with a 2019 and 2020 heatwave being the most profound. The heatwaves are due to localized climates, and are intense in urban areas with a huge number of concrete structures and fewer vegetation, the heatwaves are also as a result of deforestation, and the expansion of urban centers,
 
-In sed velit ac velit auctor ullamcorper a eget ante. Vestibulum et scelerisque sem. Integer ut mattis massa, nec luctus mauris. Etiam nec ligula eget velit vehicula fermentum. Cras ipsum est, varius in mollis eu, tincidunt eu purus. Nullam augue turpis, congue sit amet ligula ac, pellentesque gravida erat. Phasellus vitae hendrerit ligula. Proin aliquet velit justo, nec iaculis sem semper id. Duis lacinia quam in tempor cursus. Mauris nec ipsum eget metus finibus imperdiet. Etiam mollis iaculis justo, eget tristique nulla pulvinar eget. Mauris rutrum, nisi at pretium dictum, justo libero fringilla ipsum, nec luctus mi dui non magna. Integer quis nisl commodo, blandit dui quis, fringilla libero.
+These heatwaves have led to reduced agricultural output which have further led to economic losses, and threat to food security in regions such as Northern Nigeria, straining of the energy infrastructure due to increased demand for cooling, an increase in heat related illnesses such as menengitis and stroke and mortality and a loss of productivity in the workforce. Environmental i,pats have also been felt, due to an increase in wildfires, which worsens the heat situation, and deseritifcation in regions such as Northern Nigeria. This
 
-Fusce vitae ipsum eros. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse orci tortor, dictum et faucibus ut, tempus quis ipsum. Donec egestas leo ac est maximus, eu placerat mauris ornare. Curabitur tempor leo et elit auctor finibus. Quisque sit amet mi finibus, venenatis enim vitae, convallis dui. Suspendisse fringilla nibh ac lorem fringilla dictum. Aenean pellentesque nulla id erat varius faucibus. Vestibulum non sapien gravida mi eleifend commodo ac at velit. Integer semper ultricies scelerisque. Nunc aliquet porttitor eleifend. Nulla blandit dapibus fermentum. In scelerisque sem ipsum, a vestibulum dolor consequat et.
-
-Pellentesque ut ornare lectus, bibendum eleifend ante. Mauris pulvinar maximus leo, id pulvinar nisl interdum eget. Nam iaculis aliquam nunc ac porttitor. Curabitur pharetra felis et varius ornare. Aenean posuere efficitur semper. Donec pharetra purus et ex porta vehicula. Mauris massa leo, pellentesque a congue porttitor, vehicula et purus. Nunc dapibus turpis metus, faucibus malesuada odio vehicula eget. Maecenas hendrerit ac ipsum ut porta.
-
-Cras erat felis, lobortis nec tellus eu, auctor maximus nulla. Donec feugiat quam nulla, ut ultricies ante congue a. Curabitur hendrerit nunc at quam condimentum, non maximus enim consequat. Donec iaculis interdum pharetra. Aliquam erat volutpat. Morbi tempor imperdiet sem, vitae pulvinar eros suscipit id. Etiam laoreet enim eu sapien venenatis, at vehicula orci porta. Ut nec magna rhoncus, congue nibh sit amet, elementum purus. Aliquam erat volutpat. Nam iaculis lorem eros, a pharetra arcu vehicula sed. Maecenas nec metus at nulla interdum convallis. Nam vel ultrices ipsum. Phasellus commodo est ut sollicitudin pharetra. 
+## Aims and Objectives
