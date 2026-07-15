@@ -10,6 +10,7 @@ book:
   chapters:
     - index.qmd
     - intro.qmd
+    - litrev.qmd
     - methods.qmd
     - results.qmd
     - discussion.qmd

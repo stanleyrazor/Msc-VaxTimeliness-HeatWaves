@@ -66,7 +66,6 @@ d2 <- d1 |>
     # numeric variables
     across(c(birth_order, mother_age_birth, child_age), \(x) x |> as.character() |> as.numeric())
 
-
   ) |>
 
   select(-m_current_age)
