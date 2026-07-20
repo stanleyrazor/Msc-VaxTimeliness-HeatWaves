@@ -116,6 +116,7 @@ spec <- data.frame(
 
 # d1 - birth recode from dhs
 # spec - the spec file
+d1 <- read_dta("data/dhs/NG_2024_DHS_03262026_919_211396/NGBR8BDT/NGBR8BFL.dta")
 vax_data <- make_vax_all(d1, spec)
 
 saveRDS(vax_data, "data/processed/vaxdata-components.rds")

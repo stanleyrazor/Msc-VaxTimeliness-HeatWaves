@@ -2,98 +2,28 @@
 
 # Introduction
 
-## Background
+> The start of the main content of your project report should be presented as a formal introductory section – which might typically account for between 10% and 30% of the overall word count.
+>
+> -   This should give a detailed background of the work which has led up to the project, including a review of the literature if appropriate.
+>
+> -   The Introduction should finish by describing the gap in knowledge that your aims and objectives will address.
 
-Globally, extreme weather events such as floods, cold waves, droughts and heatwaves have become increasingly frequent and intense[@ebi2021]. These events disrupt multiple sectors including energy infrastructure, agriculture, food production, healthcare and livelihoods, resulting in substantial social and economic losses [@zhang2023; @costello2009]. Consistent with these changes, global mean near-surface temperatures have risen by approximately 1.4–1.5°C above pre-industrial (1850–1900) levels, with the five-year average temperature during 2020–2025 being the highest on record and 2024 recorded as the warmest year globally [@adriansimmons2021]. This continued warming is largely driven by increasing greenhouse gas emissions, together with changes and interactions in atmospheric and oceanic circulation [@change2022; @adriansimmons2021]. One of the most direct consequences of rising global temperatures is the increasing occurrence of heatwaves, commonly defined as periods of unusually high temperatures that persist for several consecutive days. Climate projections indicate that both the frequency and intensity of heatwaves will continue to increase unless substantial reductions in greenhouse gas emissions are accompanied by investments in climate adaptation and resilient infrastructure [@change2022].
+# Aims and Objectives
 
-Heatwaves have important implications for population health and healthcare systems. High temperatures have been associated with challenges in maintaining the cold chain required for vaccines, medicines and medical equipment [@curtis2017; @carmichael2012], increased incidence of heat-related illnesses and injuries, particularly among older adults [@hajat2007], prolonged recovery among hospitalized patients, increased in-patient mortality [@ferron2006; @stafoggia2008], and excess mortality across many regions of the world [@hundessa2025; @clarke2025; @he]. Beyond their direct effects on health, these impacts place additional strain on already constrained health systems.
+> You should include a concise statement of your project report’s Aims (the overall goal of the work) and Objectives (what you hoped to be achieved during the project work itself). This section should normally consist of just a few lines. If your project has involved primary research, then it will be appropriate to indicate the specific research question or hypothesis addressed.
 
-Nigeria has experienced several notable heatwave events in recent decades, including those occurring in 2002, 2019, 2020, 2023 and 2024 [@adefisan2018; @morakinyo2024; @climate2025]. These events have been linked to broader climatic changes, compounded by rapid urbanisation, deforestation and land-use change. Their impacts have been felt across multiple sectors. In agriculture, the 2024 heatwave was associated with an estimated 20% decline in agricultural production in a country where food production depends heavily on rainfall [@oluwaseun2024; @climate2025]. Heatwaves have also increased pressure on Nigeria's energy infrastructure through higher cooling demand, contributing to electricity shortages and national grid failures[@oluwaseun2024]. In the health sector, they have been associated with increased occurrence of heat-related illnesses such as heat stroke and meningitis, while environmentally they have contributed to increased wildfire risk and the progression of desertification, particularly in northern Nigeria [@oluwaseun2024; @gbadegesin2011].
+A token reference to test the *references.bib* file and later References @hernán2010 Section: @hernán2010
 
-------------------------------------------------------------------------
+Lorem Ipsum
+"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."
+"There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..."
 
-Nigeria's National Programme on Immunization (NPI) was established in 1978 to provide routine immunization services for children. Over the years, the programme has expanded to include additional vaccine antigens in line with the country's Expanded Programme on Immunization (EPI). According to the current national immunization schedule, a child is considered fully immunized upon receiving one dose of Bacillus Calmette–Guérin (BCG), the hepatitis B birth dose, four doses of oral polio vaccine (OPV), two doses of inactivated polio vaccine (IPV), three doses each of the pentavalent, pneumococcal conjugate (PCV) and rotavirus vaccines, two doses of measles-containing vaccine (MCV), and one dose each of the yellow fever and meningitis vaccines [@ndhs]. Rotavirus vaccine is the most recent addition to the national schedule, having been introduced in phases during 2022 [@ndhs]. The current childhood immunization schedule is presented in Table 1.1.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque est felis, lacinia a eros ut, venenatis aliquam ante. Quisque posuere purus eget est consectetur, id lobortis nibh lobortis. Integer varius eros ligula, non imperdiet diam euismod a. Etiam ligula odio, ornare a lacus nec, viverra dignissim leo. Maecenas laoreet elit vel leo lacinia, eget maximus erat cursus. Ut gravida velit dui, quis porttitor ipsum posuere sit amet. Sed sed varius urna, eu auctor leo. Mauris ultrices vestibulum mi, vel luctus elit efficitur faucibus. Integer scelerisque erat vitae tellus faucibus, sit amet tincidunt mi cursus. Integer semper rhoncus massa, sed luctus metus gravida eget. Ut a libero accumsan, laoreet turpis in, bibendum sem. Vivamus iaculis massa sed dui tincidunt dapibus. Vivamus posuere fringilla imperdiet. Pellentesque sollicitudin lectus mauris, vitae blandit turpis egestas vitae.
 
-```{r tbl-meth}
-#| echo: false
-#| message: false
-#| warning: false
-#| tbl-cap: "Nigeria's National Programme on Immunization schedule."
+In sed velit ac velit auctor ullamcorper a eget ante. Vestibulum et scelerisque sem. Integer ut mattis massa, nec luctus mauris. Etiam nec ligula eget velit vehicula fermentum. Cras ipsum est, varius in mollis eu, tincidunt eu purus. Nullam augue turpis, congue sit amet ligula ac, pellentesque gravida erat. Phasellus vitae hendrerit ligula. Proin aliquet velit justo, nec iaculis sem semper id. Duis lacinia quam in tempor cursus. Mauris nec ipsum eget metus finibus imperdiet. Etiam mollis iaculis justo, eget tristique nulla pulvinar eget. Mauris rutrum, nisi at pretium dictum, justo libero fringilla ipsum, nec luctus mi dui non magna. Integer quis nisl commodo, blandit dui quis, fringilla libero.
 
-library(dplyr)
-library(kableExtra)
+Fusce vitae ipsum eros. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse orci tortor, dictum et faucibus ut, tempus quis ipsum. Donec egestas leo ac est maximus, eu placerat mauris ornare. Curabitur tempor leo et elit auctor finibus. Quisque sit amet mi finibus, venenatis enim vitae, convallis dui. Suspendisse fringilla nibh ac lorem fringilla dictum. Aenean pellentesque nulla id erat varius faucibus. Vestibulum non sapien gravida mi eleifend commodo ac at velit. Integer semper ultricies scelerisque. Nunc aliquet porttitor eleifend. Nulla blandit dapibus fermentum. In scelerisque sem ipsum, a vestibulum dolor consequat et.
 
-vaccines <- tibble(
-  Time = c(
-    rep("At birth", 3),
-    rep("6 weeks", 5),
-    rep("10 weeks", 4),
-    rep("14 weeks", 5),
-    "6 months",
-    rep("9 months", 3),
-    "12 months",
-    "15 months"
-  ),
-  Vaccine = c(
-    "BCG",
-    "OPV 0 (Birth dose)",
-    "Hepatitis B birth dose",
-    
-    "Pentavalent (DPT, Hepatitis B, HiB) 1",
-    "Pneumococcal Conjugate Vaccine 1",
-    "OPV 1 (1st dose)",
-    "Rotavirus 1",
-    "IPV1",
-    
-    "Pentavalent (DPT, Hepatitis B, HiB) 2",
-    "Pneumococcal Conjugate Vaccine 2",
-    "OPV 2 (2nd dose)",
-    "Rotavirus 2",
-    
-    "Pentavalent (DPT, Hepatitis B, HiB) 3",
-    "Pneumococcal Conjugate Vaccine 3",
-    "OPV 3 (3rd dose)",
-    "Rotavirus 3",
-    "IPV2",
-    
-    "Vitamin A (1st dose)",
-    
-    "Measles 1st dose (MCV1)",
-    "Yellow Fever",
-    "Meningitis Vaccine",
-    
-    "Vitamin A (2nd dose)",
-    
-    "Measles 2nd dose (MCV2)"
-  )
-)
+Pellentesque ut ornare lectus, bibendum eleifend ante. Mauris pulvinar maximus leo, id pulvinar nisl interdum eget. Nam iaculis aliquam nunc ac porttitor. Curabitur pharetra felis et varius ornare. Aenean posuere efficitur semper. Donec pharetra purus et ex porta vehicula. Mauris massa leo, pellentesque a congue porttitor, vehicula et purus. Nunc dapibus turpis metus, faucibus malesuada odio vehicula eget. Maecenas hendrerit ac ipsum ut porta.
 
-vaccines |>
-  kbl(
-    booktabs = TRUE,
-    col.names = c("Minimum target age", "Vaccine"),
-    align = c("l", "l"),
-    linesep = ""
-  ) |>
-  collapse_rows(
-    columns = 1,
-    valign = "middle"
-  ) |>
-  kable_classic(
-    full_width = FALSE,
-    html_font = "Times New Roman"
-  ) |>
-  column_spec(1, width = "2.2cm", bold = TRUE) |>
-  column_spec(2, width = "7cm") |>
-  row_spec(0, bold = TRUE)
-```
-
-Despite substantial progress over recent decades, routine childhood immunization coverage in Nigeria remains below national and global targets and is characterised by marked geographical and socioeconomic disparities. Nationally, the proportion of children receiving all basic vaccinations increased from 13% in 2003 to 39% in 2024 [@ndhs]. However, vaccination coverage varies considerably across the country, with consistently lower coverage observed in northern Nigeria compared with the southern regions [@ophori2014; @alabi2024]. The 2024 NDHS similarly reported the highest coverage in the South South region (36%) and the lowest in the North West region (12%) [@ndhs]. These disparities have been associated with several factors, including place of delivery, maternal education, household wealth, and urban–rural residence [@ndhs; @alabi2024; @salako2024].
-
-Nigeria continues to account for a substantial proportion of the global burden of undervaccinated children[@ogunniyi2024]. Persistent challenges affecting the immunization programme include supply chain constraints, inadequate healthcare personnel and funding, limited geographical access to health facilities, and vaccine hesitancy associated with sociocultural and religious factors [@ogunniyi2024; @watch2023]. More recently, the COVID-19 pandemic further disrupted routine immunization services, slowing progress in vaccination coverage and access [@adegoke2024].
-
-------------------------------------------------------------------------
-
-Although considerable attention has been given to vaccination coverage in Nigeria, considerably less is known about whether children receive vaccines at the recommended ages[@umeokonkwo; @derqui2024]. Vaccination timeliness is important because delays prolong children's susceptibility to vaccine-preventable diseases despite eventual vaccine receipt.
-
-## Aims and Objectives
+Cras erat felis, lobortis nec tellus eu, auctor maximus nulla. Donec feugiat quam nulla, ut ultricies ante congue a. Curabitur hendrerit nunc at quam condimentum, non maximus enim consequat. Donec iaculis interdum pharetra. Aliquam erat volutpat. Morbi tempor imperdiet sem, vitae pulvinar eros suscipit id. Etiam laoreet enim eu sapien venenatis, at vehicula orci porta. Ut nec magna rhoncus, congue nibh sit amet, elementum purus. Aliquam erat volutpat. Nam iaculis lorem eros, a pharetra arcu vehicula sed. Maecenas nec metus at nulla interdum convallis. Nam vel ultrices ipsum. Phasellus commodo est ut sollicitudin pharetra. 

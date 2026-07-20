@@ -2,7 +2,7 @@
 # reading KE-DHS data & trying vaccine timeliness on Measles
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
                ggpubr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
-               ggsurvfit, icenReg)
+               ggsurvfit, icenReg, sf)
 mvs <- naniar::miss_var_summary
 
 # Data --------------------------------------------------------------------
@@ -10,7 +10,8 @@ mvs <- naniar::miss_var_summary
 # DHS Geo data - spatial join — same CRS etc.
 g1 <- st_read("data/dhs/NG_2024_DHS_03262026_919_211396/NGGE8AFL/NGGE8AFL.shp") |>
   select(cluster = DHSCLUST)
-shp <- readRDS('data/shp/gadm/gadm41_NGA_2_pk.rds') |> st_as_sf() |> select(GID_2)
+shp <- readRDS('data/shp/gadm/gadm41_NGA_2_pk.rds') |> terra::unwrap() |>
+  st_as_sf() |> select(GID_2)
 g2 <- st_join(g1, shp[, "GID_2"], left = TRUE) |> st_drop_geometry()
 
 # ldata - vax-data | cdata - covariates
@@ -34,13 +35,13 @@ setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 # Merging -----------------------------------------------------------------
 
-vax_data <- ldata[['vita1']]; setDT(vax_data)
-vax_used_folder <- 'output/img/vita1/'
+vax_data <- ldata[['penta1']]; setDT(vax_data)
+vax_used_folder <- 'output/img/penta1/'
 
 # the 14-day window bound
 vax_data[, `:=`(
-  start_dt = due_date - 7,
-  end_dt   = due_date + 7,
+  start_dt = due_date - 28, #* change to 7
+  end_dt   = due_date + 28,
   cluster  = as.character(cluster)
 )]
 
@@ -52,6 +53,7 @@ results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date
 
 vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
 (table(vax_data$heatwave))
+(table(is.na(vax_data$vaxx_date), vax_data$heatwave))
 
 # merging with covariates
 vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
@@ -74,11 +76,11 @@ vax_data_plot <- vax_data |>
     outcome_event = case_when(
       outcome_event == 0 ~ 1,
       outcome_event == 1 ~ 0,
-      outcome_event == -1 ~ 2
+      outcome_event == -1 ~ 3 # 2 is left censored, and 3 is interval
     ),
 
     time_start = case_when(
-      outcome_event == 2 ~ (6*30)-7,            # Left: happened between birth and now / penta 3 always given as at 14*7 days
+      outcome_event == 2 ~ (30.4*9)-7,            # Left: happened between birth and now / penta 3 always given as at 14*7 days / vit a: (6*30)-7
       outcome_event == 0 ~ time_outcome,    # Right: started at interview, ends never
       outcome_event == 1 ~ time_outcome     # Exact: happened at this time
     ),
@@ -124,7 +126,7 @@ survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ 1,
     x = "Time since birth (days)",
     y = "Probability of Being Vaccinated"
   )
-ggsave(filename = paste0(vax_used_folder, "overall.png"), height = 10, width = 10, dpi = 1000)
+ggsave(filename = paste0(vax_used_folder, "overall.png"), height = 8, width = 8, dpi = 1000)
 
 # heatwaves
 survfit(Surv(time_start, time_end, outcome_event, type = "interval") ~ Heatwave,
