@@ -2,8 +2,10 @@
 # reading KE-DHS data & trying vaccine timeliness on Measles
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
                ggpubr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
-               ggsurvfit, icenReg, sf)
+               ggsurvfit, icenReg, sf, kableExtra, tidyr, viridisLite, autoReg, flexsurv,
+               survey)
 mvs <- naniar::miss_var_summary
+source('R/autoReg-modifier.R')
 
 # Data --------------------------------------------------------------------
 
@@ -21,7 +23,7 @@ cdata <- readRDS('data/processed/dhs-covariates.rds')
 # processed temperature data - at pixel level (buffered)
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
 cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
-cds_geoloc$heatwave <- cds_geoloc$p >= .9
+cds_geoloc$heatwave <- cds_geoloc$p >= .8
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 # IN CASE WE NEED IT: processed temperature data - at areal level (zonal aggregation)
@@ -32,11 +34,474 @@ setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 # cds_areal <- cds_areal |> mutate(cluster = as.character(cluster))
 # setDT(cds_areal); setkey(cds_areal, cluster, date)
 
+# Tabling heatwave stats --------------------------------------------------
 
-# Merging -----------------------------------------------------------------
 
-vax_data <- ldata[['penta1']]; setDT(vax_data)
-vax_used_folder <- 'output/img/penta1/'
+g <- expand.grid(
+  antigen = c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1'),
+  return = c(.75, .8, .85, .9, .95, .99),
+  final_duedate = c(7, 14, 21, 28),
+  full_data_heatwavenum = NA,
+  vaxcard_heatwavenum = NA
+)
+
+for (i in 1:nrow(g)) {
+  antigen <- g[i, 1] |> as.character()
+  p <- g[i, 2]
+
+  cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
+  cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
+  cds_geoloc$heatwave <- cds_geoloc$p >= p
+  setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
+
+  vax_data <- ldata[[antigen]]; setDT(vax_data)
+  max <- g[i, 3]
+  min <- ifelse(antigen == 'bcg', 0, max)
+
+  # the 14-day window bound
+  vax_data[, `:=`(
+    start_dt = due_date - min, #* change to 7
+    end_dt   = due_date + max,
+    cluster  = as.character(cluster)
+  )]
+
+  # find all rows in cds_geoloc where cluster matches AND date is between start/end
+  # and sum the 'heatwave' column for @ child
+  results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                        .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+                        by = .EACHI]
+
+  vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 0, 1)
+  g[i, 4] <- (sum(vax_data$heatwave))
+  g[i, 5] <- sum(vax_data$heatwave[!is.na(vax_data$vaxx_date)])
+
+  message(paste(g[i, ], collapse = ' | '))
+}
+
+tab <- g |>
+  mutate(
+    antigen = factor(antigen, levels = c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1'),
+                     labels = c('BCG', 'Penta-1', 'Penta-2', 'Penta-3', 'MCV1')),
+    return = paste0('Quantile: ', return),
+  ) |>
+  pivot_wider(
+    id_cols = c(antigen, final_duedate),
+    names_from = return,
+    values_from = c(full_data_heatwavenum, vaxcard_heatwavenum),
+    names_vary = "slowest"
+  )
+
+kbl(
+  tab,
+  booktabs = TRUE,
+  escape = FALSE,
+  align = "ll" %+% strrep("c", ncol(tab) - 2),
+  col.names = c(
+    "Antigen",
+    "Exposure window",
+    rep(c("Full data", "VaxCard only"),
+        (ncol(tab) - 2) / 2)
+  ),
+  caption = "Number of observations classified as heatwaves under different return periods."
+) |>
+  add_header_above(
+    c(
+      " " = 2,
+      setNames(rep(2, length(unique(g$return))),
+               paste0('Quantile: ', sort(unique(g$return))))
+    )
+  ) |>
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") |>
+  row_spec(0, bold = TRUE)
+
+
+
+
+# Maps on heatwaves on clusters (space-time) ------------------------------
+
+# processed temperature data - at pixel level (buffered)
+cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
+cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
+cds_geoloc$heatwave <- cds_geoloc$p >= .8
+setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
+
+results <- cds_geoloc |> select(cluster, date, heatwave) |>
+  data.frame() |>
+  mutate(year = year(date),
+         month = month(date),
+         month = factor(month, levels = 1:12, labels = month.abb)) |>
+  group_by(cluster, year, month) |>
+  reframe(hdays = sum(heatwave)) |>
+  mutate(
+    hdays = ifelse(hdays > 5, '>5', hdays),
+    hdays = factor(
+      hdays,
+      levels = c("0", "1", "2", "3", "4", "5", ">5"),
+      ordered = TRUE
+    )
+  )
+
+cols <- c(
+  "0"   = "black",
+  setNames(
+    viridis(6, option = "D", begin = 0.15, end = 1),
+    c("1", "2", "3", "4", "5", ">5"))
+)
+yrs <- sort(unique(results$year))
+for(i in seq_along(yrs)){
+
+  tmp <- merge(g1, filter(results, year == yrs[i]), by = "cluster")
+
+  p <- ggplot() +
+    geom_sf(data = shp,
+            colour = "grey70",
+            fill = NA,
+            linewidth = 0.1) +
+    geom_sf(data = tmp,
+            aes(colour = hdays,
+                size = hdays)) +
+    facet_wrap(~month, nrow = 3) +
+    scale_size_manual(
+      values = c(
+        "0" = .3,
+        "1" = 2,
+        "2" = 2,
+        "3" = 2,
+        "4" = 2,
+        "5" = 2,
+        ">5" = 2
+      ),
+      guide = "none"
+    ) +
+    scale_colour_manual(
+      values = cols,
+      drop = FALSE,
+      name = "Heatwave\ndays"
+    ) +
+    labs(title = yrs[i]) +
+    theme_void(base_family = "Times New Roman") +
+    theme(
+      legend.position = "right",
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold", hjust = 0.5)
+    )
+
+  ## optionally save
+  ggsave(
+    paste0("output/img/heatmaps/", yrs[i], ".png"),
+    p,
+    width = 12,
+    height = 9,
+    dpi = 1000
+  )
+}
+
+
+
+
+
+# Plotting temperatures and heatwave data ---------------------------------
+
+
+# processed temperature data - at pixel level (buffered)
+cds_geoloc <- arrow::read_parquet('data/processed/admin2-processed.parquet')
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
+setDT(cds_geoloc)
+
+# shapefile
+admin2_res <- bind_cols(
+  shp |> st_drop_geometry(),
+  data.frame(st_centroid(shp) |> st_coordinates()) |> setNames(c('lon', 'lat'))
+) |>
+  merge(cds_geoloc, by = 'GID_2', all.y = T)
+
+admin2_res <- admin2_res |>
+  mutate(
+    GID_2 = factor(GID_2,
+                   levels = admin2_res |> distinct(GID_2, lat) |> arrange(lat) |> pull(GID_2)
+    )
+  )
+
+# TX5X plot
+mu <- mean(admin2_res$tx5x)
+p <- ggplot(admin2_res) +
+  geom_tile(aes(x = date, y = GID_2, fill = tx5x)) +
+  scale_fill_gradient2(
+    low = "#1a9850",
+    mid = "white",
+    high = "#d73027",
+    midpoint = mu,
+    breaks = seq(15, 37.5, length.out = 10),
+    guide = guide_coloursteps(
+      show.limits = TRUE,
+      even.steps = TRUE
+    ),
+    name = expression(TX5X~"("*degree*C*")")
+  ) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y",
+    expand = c(0, 0)
+  ) +
+  scale_y_discrete(
+    breaks = levels(admin2_res$GID_2)[c(1, length(levels(admin2_res$GID_2)))],
+    labels = c("Southern\nNigeria", "Northern\nNigeria"),
+    expand = expansion(add = 0)
+  ) +
+  labs(x = NULL, title = 'The 5-day rolling average temperature') +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    axis.title.y = element_blank(),
+    # axis.text.y = element_blank(),
+    # axis.ticks.y = element_blank(),
+    # axis.line.y = element_blank(),
+
+    legend.key.height = unit(1.4, "cm"),
+    legend.key.width = unit(0.8, "cm"),
+
+    axis.text.x = element_text(size = 10, colour = "black"),
+    axis.ticks.x = element_line(colour = "black"),
+    axis.line.x = element_line(colour = "black"),
+
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "tx5x.png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+# Threshold plot
+admin2_res <- admin2_res |>
+  mutate(
+    thresh = mev::qgev(
+      p = rep(.8, n()),
+      loc = loc,
+      scale = scale,
+      shape = shape
+    ),
+    GID_2 = as.character(GID_2),
+    GID_2 = factor(
+      GID_2,
+      levels = admin2_res |>
+        distinct(GID_2, lat) |>
+        arrange(lat) |>
+        pull(GID_2)
+    ),
+    year = factor(year, levels = 2020:2024)
+  )
+mu <- mean(admin2_res$thresh)
+
+
+p <- ggplot(admin2_res) +
+  geom_tile(aes(x = GID_2, y = year, fill = thresh)) +
+  scale_fill_gradient2(
+    low = "#1a9850",
+    mid = "white",
+    high = "#d73027",
+    midpoint = mu,
+    breaks = seq(floor(min(admin2_res$thresh)) |> round(2),
+                 ceiling(max(admin2_res$thresh)) |> round(2),
+                 length.out = 10),
+    guide = guide_coloursteps(
+      show.limits = TRUE,
+      even.steps = TRUE
+    ),
+    name = expression(Threshold~"("*degree*C*")")
+  ) +
+  scale_x_discrete(
+    breaks = levels(admin2_res$GID_2)[c(1, length(levels(admin2_res$GID_2)))],
+    labels = c("Southern Nigeria", "Northern Nigeria"),
+    expand = expansion(add = 0)
+  ) +
+  scale_y_discrete(drop = FALSE) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Temperature thresholds for a 1-in-5 year event"
+  ) +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    # axis.text.x = element_blank(),
+    # axis.ticks.x = element_blank(),
+    # axis.line.x = element_blank(),
+
+    axis.text.y = element_text(size = 11, colour = "black"),
+    axis.ticks.y = element_line(colour = "black"),
+
+    legend.key.height = unit(1.4, "cm"),
+    legend.key.width = unit(0.8, "cm"),
+
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "temp-thresh-5.png"),
+  p,
+  width = 12,
+  height = 4,
+  dpi = 1000
+)
+
+# plotting a line plot:
+p <- ggplot(admin2_res |> select(lat, thresh, year) |> distinct(),
+            aes(x = lat, y = thresh, col = year)) +
+  geom_point(alpha = .3) +
+  geom_smooth(method = 'loess', se = F) +
+  scale_x_continuous(
+    breaks = c(min(admin2_res$lat), max(admin2_res$lat)),
+    labels = c("Southern Nigeria", "Northern Nigeria"),
+    expand = expansion(mult = c(.02, .02))
+  ) +
+  labs(
+    x = "",
+    y = 'Threshold (degree celsius)',
+    title = "Temperature thresholds for a 1-in-5 year event"
+  ) +
+  theme_bw(base_family = 'Times New Roman') +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "temp-thresh-5(2).png"),
+  p,
+  width = 12,
+  height = 5,
+  dpi = 1000
+)
+
+# heatwave classification over time, and by location
+admin2_res <- admin2_res |>
+  mutate(
+    GID_2 = as.character(GID_2),
+    GID_2 = factor(GID_2,
+                   levels = admin2_res |> distinct(GID_2, lat) |> arrange(lat) |> pull(GID_2)
+    ),
+    heatwave = ifelse(p >= 0.8, 'Heatwave', 'Non-Heatwave')
+  )
+
+p <- ggplot(admin2_res) +
+  geom_tile(aes(x = date, y = GID_2, fill = heatwave)) +
+  scale_fill_manual(
+    values = c(
+      "Non-Heatwave" = "grey92",
+      "Heatwave" = "#d73027"
+    )
+  ) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y",
+    expand = c(0, 0)
+  ) +
+  scale_y_discrete(
+    breaks = levels(admin2_res$GID_2)[c(1, length(levels(admin2_res$GID_2)))],
+    labels = c("Southern\nNigeria", "Northern\nNigeria"),
+    expand = expansion(add = 0)
+  ) +
+  labs(x = NULL, title = 'The daily heatwave classification',
+       fill = NULL) +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    axis.title.y = element_blank(),
+    # axis.text.y = element_blank(),
+    # axis.ticks.y = element_blank(),
+    # axis.line.y = element_blank(),
+
+    axis.text.x = element_text(size = 10, colour = "black"),
+    axis.ticks.x = element_line(colour = "black"),
+    axis.line.x = element_line(colour = "black"),
+
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "heatwave-classification.png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+
+# another way, monthly
+tmp <- admin2_res |>
+  mutate(
+    GID_2 = as.character(GID_2),
+    GID_2 = factor(GID_2,
+                   levels = admin2_res |> distinct(GID_2, lat) |> arrange(lat) |> pull(GID_2)
+    ),
+    heatwave = ifelse(p >= 0.8, 1, 0),
+    month = month(date)
+  ) |>
+  group_by(GID_2, year, month) |>
+  reframe(heatwave = sum(heatwave)) |>
+  mutate(
+    heatwave = ifelse(heatwave > 5, '>5', heatwave),
+    heatwave = factor(
+      heatwave,
+      levels = c("0", "1", "2", "3", "4", "5", ">5"),
+      ordered = TRUE
+    ),
+    date = ym(paste0(year, '-', month))
+  )
+
+cols <- c(
+  "0"   = "gray",
+  setNames(
+    viridis(6, option = "D", begin = 0.15, end = 1),
+    c("1", "2", "3", "4", "5", ">5"))
+)
+
+p <- ggplot(tmp) +
+  geom_tile(aes(x = date, y = GID_2, fill = heatwave), col = NA, linewidth = 0) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y",
+    expand = c(0, 0)
+  ) +
+  scale_fill_manual(
+    values = cols,
+    drop = FALSE,
+    name = "Number of\nheatwave days"
+  ) +
+  labs(x = NULL, title = 'The daily heatwave classification',
+       fill = NULL) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.y = element_blank(),
+
+    axis.text.x = element_text(size = 10, colour = "black"),
+    axis.ticks.x = element_line(colour = "black"),
+    axis.line.x = element_line(colour = "black"),
+
+    panel.grid = element_blank(),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "heatwave-classification(agg).png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+# Data exploration --------------------------------------------------------
+
+vax_data <- ldata[['mcv1']]; setDT(vax_data)
+vax_used_folder <- 'output/img/mcv1/'
 
 # the 14-day window bound
 vax_data[, `:=`(
@@ -48,8 +513,8 @@ vax_data[, `:=`(
 # find all rows in cds_geoloc where cluster matches AND date is between start/end
 # and sum the 'heatwave' column for @ child
 results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
-               .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
-               by = .EACHI]
+                      .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+                      by = .EACHI]
 
 vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
 (table(vax_data$heatwave))
@@ -63,11 +528,9 @@ vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
 vax_data <- vax_data |> filter(!is.na(num_anc_visits)) |>
   mutate(wt = as.numeric(wt),
          # across(where(is.factor), as.character)
-         )
-
+  )
 # 0 - event | -1 - left censored | 1 - right censored
 
-# Data exploration --------------------------------------------------------
 
 glimpse(vax_data)
 
@@ -369,7 +832,486 @@ ggsave(filename = paste0(vax_used_folder, "Mother Age.png"), height = 10, width 
 
 
 
-# Model -------------------------------------------------------------------
+
+# Models ------------------------------------------------------------------
+
+
+cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
+cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
+setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
+
+
+antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1')
+antigen_times <- pmax(0, c(0, c(6, 10, 14)*7, 9*30.4) - 7)
+
+for (i in 1:length(antigen)) {
+
+  message('Currently analyzing: ', antigen[i])
+  use_window_min <- ifelse(antigen[i] == 'bcg', 0, 28)
+  vax_data <- ldata[[antigen[i]]]; setDT(vax_data)
+
+  # the 14-day window bound
+  vax_data[, `:=`(
+    start_dt = due_date - use_window_min,
+    end_dt   = due_date + 28,
+    cluster  = as.character(cluster)
+  )]
+
+  # find all rows in cds_geoloc where cluster matches AND date is between start/end
+  # and sum the 'heatwave' column for @ child
+  results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                        .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+                        by = .EACHI]
+
+  vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
+
+  # merging with covariates
+  vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
+                    , cdata |> mutate(wt = as.character(wt)),
+                    by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
+
+  vax_data <- vax_data |> filter(!is.na(vaxx_date)) |>
+    mutate(
+      wt = as.numeric(wt),
+      delay = as.numeric(vaxx_date - due_date),
+      delayclass = ifelse(delay > 28, 1, 0)
+    )
+
+  model_data <- vax_data |>
+    data.frame() |>
+    transmute(
+      delay,
+      v021, v022, wt,
+
+      delayclass = factor(
+        delayclass,
+        levels = c(0, 1),
+        labels = c('Timely', 'Delayed')
+      ),
+
+      heatwave = factor(
+        heatwave,
+        levels = c("absent", "present"),
+        labels = c("No heatwave", "Heatwave")
+      ),
+
+      residence = factor(
+        residence,
+        levels = c("urban", "rural"),
+        labels = c("Urban", "Rural")
+      ),
+
+      birth_order,
+
+      place_delivery = factor(
+        place_delivery,
+        levels = c("home", "institution"),
+        labels = c("Home", "Health facility")
+      ),
+
+      child_gender = factor(
+        child_gender,
+        levels = c("male", "female"),
+        labels = c("Male", "Female")
+      ),
+
+      time_to_hf = factor(
+        time_to_hf,
+        levels = c("<30 mins", "31-60 mins", "1-2 hrs", "2+ hrs"),
+        labels = c(
+          "<30 minutes",
+          "31–60 minutes",
+          "1–2 hours",
+          ">2 hours"
+        )
+      ),
+
+      wealth_index = factor(
+        wealth_index,
+        levels = c("poorest", "poorer", "middle", "richer", "richest"),
+        labels = c("Poorest", "Poorer", "Middle", "Richer", "Richest")
+      ),
+
+      meduc = factor(
+        meduc,
+        levels = c("no education", "primary", "secondary", "higher"),
+        labels = c(
+          "No formal education",
+          "Primary school",
+          "Secondary school",
+          "Higher education"
+        )
+      ),
+
+      mother_age_group = case_when(
+        mother_age_birth <= 19 ~ "<=19 yrs",
+        mother_age_birth >= 20 & mother_age_birth <= 24 ~ "20-24 yrs",
+        mother_age_birth >= 25 & mother_age_birth <= 29 ~ "25-29 yrs",
+        mother_age_birth >= 30 & mother_age_birth <= 34 ~ "30-34 yrs",
+        mother_age_birth >= 35 & mother_age_birth <= 39 ~ "35-39 yrs",
+        mother_age_birth >= 40 & mother_age_birth <= 44 ~ "40-44 yrs",
+        mother_age_birth >= 45 ~ "45+ yrs",
+        TRUE ~ NA_character_
+      ),
+      mother_age_group = factor(
+        mother_age_group,
+        levels = c(
+          "<=19 yrs",
+          "20-24 yrs",
+          "25-29 yrs",
+          "30-34 yrs",
+          "35-39 yrs",
+          "40-44 yrs",
+          "45+ yrs"
+        ),
+        labels = c(
+          "≤19 years",
+          "20–24 years",
+          "25–29 years",
+          "30–34 years",
+          "35–39 years",
+          "40–44 years",
+          "45 years or older"
+        )
+      )
+    )
+
+  model_data$delayclass        <- setLabel(model_data$delayclass, "Vaccination delay (0/1)")
+  model_data$delay             <- setLabel(model_data$delay, "Vaccination delay (days)")
+  model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
+  model_data$residence         <- setLabel(model_data$residence, "Place of residence")
+  model_data$birth_order       <- setLabel(model_data$birth_order, "Birth order")
+  model_data$place_delivery    <- setLabel(model_data$place_delivery, "Place of delivery")
+  model_data$child_gender      <- setLabel(model_data$child_gender, "Child's sex")
+  model_data$time_to_hf        <- setLabel(model_data$time_to_hf, "Travel time to health facility")
+  model_data$wealth_index      <- setLabel(model_data$wealth_index, "Household wealth")
+  model_data$meduc             <- setLabel(model_data$meduc, "Mother's education")
+  model_data$mother_age_group  <- setLabel(model_data$mother_age_group, "Mother's age")
+
+  # regression model
+  glm_design <- svydesign(
+    id = ~v021,          # Primary Sampling Unit / Cluster
+    strata = ~v022,      # Stratification variable/022
+    weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
+    data = model_data,
+    nest = TRUE
+  )
+  options(survey.lonely.psu = 'adjust')
+
+  fit <- svyglm(
+    delay ~
+      heatwave + residence + birth_order + place_delivery + child_gender +
+      time_to_hf + wealth_index + meduc + mother_age_group,
+    family = gaussian(),
+    design = glm_design,
+    data = model_data
+  )
+  # fit <- lm(
+  #   delay ~
+  #     heatwave + residence + birth_order + place_delivery + child_gender +
+  #     time_to_hf + wealth_index + meduc + mother_age_group,
+  #   weights = wt,
+  #   data = model_data
+  # )
+
+  result <- autoReg(fit, uni = F)
+  flextable::save_as_image(
+    x = result %>% myft(),
+    path = paste0('output/img/', antigen[i], '/(lm-normal)model-table.png'),
+    res = 500
+  )
+
+  p <- mod_modelPlot(fit)
+  png(
+    filename = paste0("output/img/", antigen[i], "/(lm-normal)model-plot.png"),
+    width = 12,
+    height = 9,
+    units = "in",
+    res = 500
+  )
+
+  print(p)
+  dev.off()
+
+  png(
+    filename = paste0("output/img/", antigen[i], "/(lm-normal)model-diagnostic.png"),
+    width = 8,
+    height = 8,
+    units = "in",
+    res = 500
+  )
+  par(mfrow = c(2, 2));
+  plot(fit, pch = '*')
+  dev.off()
+
+  # logistic regression model
+  glm_design <- svydesign(
+    id = ~v021,          # Primary Sampling Unit / Cluster
+    strata = ~v022,      # Stratification variable/022
+    weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
+    data = model_data,
+    nest = TRUE
+  )
+  options(survey.lonely.psu = 'adjust')
+
+  fit <- svyglm(
+    delayclass ~
+      heatwave + residence + birth_order + place_delivery + child_gender +
+      time_to_hf + wealth_index + meduc + mother_age_group,
+    family = quasibinomial(),
+    design = glm_design,
+    data = model_data
+  )
+
+  # fit <- glm(
+  #   delayclass ~
+  #     heatwave + residence + birth_order + place_delivery + child_gender +
+  #     time_to_hf + wealth_index + meduc + mother_age_group,
+  #   weights = wt,
+  #   data = model_data,
+  #   family = binomial()
+  # )
+
+  result <- autoReg(fit, uni = F)
+  flextable::save_as_image(
+    x = result %>% myft(),
+    path = paste0('output/img/', antigen[i], '/(glm-binomial)model-table.png'),
+    res = 500
+  )
+
+  p <- mod_modelPlot(fit)
+  png(
+    filename = paste0("output/img/", antigen[i], "/(glm-binomial)model-plot.png"),
+    width = 12,
+    height = 9,
+    units = "in",
+    res = 500
+  )
+
+  print(p)
+  dev.off()
+
+  # cox PH model
+  {
+    use_window_min <- ifelse(antigen[i] == 'bcg', 0, 28)
+    vax_data <- ldata[[antigen[i]]]; setDT(vax_data)
+
+    # the 14-day window bound
+    vax_data[, `:=`(
+      start_dt = due_date - use_window_min,
+      end_dt   = due_date + 28,
+      cluster  = as.character(cluster)
+    )]
+
+    # find all rows in cds_geoloc where cluster matches AND date is between start/end
+    # and sum the 'heatwave' column for @ child
+    results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                          .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+                          by = .EACHI]
+
+    vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
+
+    # merging with covariates
+    vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
+                      , cdata |> mutate(wt = as.character(wt)),
+                      by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
+
+    vax_data <- vax_data |>
+      mutate(
+        wt = as.numeric(wt),
+        delay = as.numeric(vaxx_date - due_date),
+        delayclass = ifelse(delay > 28, 1, 0)
+      )
+
+    model_data <- vax_data |>
+      data.frame() |>
+      transmute(
+        wt, v021, v022,
+
+        event_time, outcome_event, censor_time,
+
+        heatwave = factor(
+          heatwave,
+          levels = c("absent", "present"),
+          labels = c("No heatwave", "Heatwave")
+        ),
+
+        residence = factor(
+          residence,
+          levels = c("urban", "rural"),
+          labels = c("Urban", "Rural")
+        ),
+
+        birth_order,
+
+        place_delivery = factor(
+          place_delivery,
+          levels = c("home", "institution"),
+          labels = c("Home", "Health facility")
+        ),
+
+        child_gender = factor(
+          child_gender,
+          levels = c("male", "female"),
+          labels = c("Male", "Female")
+        ),
+
+        time_to_hf = factor(
+          time_to_hf,
+          levels = c("<30 mins", "31-60 mins", "1-2 hrs", "2+ hrs"),
+          labels = c(
+            "<30 minutes",
+            "31–60 minutes",
+            "1–2 hours",
+            ">2 hours"
+          )
+        ),
+
+        wealth_index = factor(
+          wealth_index,
+          levels = c("poorest", "poorer", "middle", "richer", "richest"),
+          labels = c("Poorest", "Poorer", "Middle", "Richer", "Richest")
+        ),
+
+        meduc = factor(
+          meduc,
+          levels = c("no education", "primary", "secondary", "higher"),
+          labels = c(
+            "No formal education",
+            "Primary school",
+            "Secondary school",
+            "Higher education"
+          )
+        ),
+
+        mother_age_group = case_when(
+          mother_age_birth <= 19 ~ "<=19 yrs",
+          mother_age_birth >= 20 & mother_age_birth <= 24 ~ "20-24 yrs",
+          mother_age_birth >= 25 & mother_age_birth <= 29 ~ "25-29 yrs",
+          mother_age_birth >= 30 & mother_age_birth <= 34 ~ "30-34 yrs",
+          mother_age_birth >= 35 & mother_age_birth <= 39 ~ "35-39 yrs",
+          mother_age_birth >= 40 & mother_age_birth <= 44 ~ "40-44 yrs",
+          mother_age_birth >= 45 ~ "45+ yrs",
+          TRUE ~ NA_character_
+        ),
+        mother_age_group = factor(
+          mother_age_group,
+          levels = c(
+            "<=19 yrs",
+            "20-24 yrs",
+            "25-29 yrs",
+            "30-34 yrs",
+            "35-39 yrs",
+            "40-44 yrs",
+            "45+ yrs"
+          ),
+          labels = c(
+            "≤19 years",
+            "20–24 years",
+            "25–29 years",
+            "30–34 years",
+            "35–39 years",
+            "40–44 years",
+            "45 years or older"
+          )
+        )
+      )
+
+    model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
+    model_data$residence         <- setLabel(model_data$residence, "Place of residence")
+    model_data$birth_order       <- setLabel(model_data$birth_order, "Birth order")
+    model_data$place_delivery    <- setLabel(model_data$place_delivery, "Place of delivery")
+    model_data$child_gender      <- setLabel(model_data$child_gender, "Child's sex")
+    model_data$time_to_hf        <- setLabel(model_data$time_to_hf, "Travel time to health facility")
+    model_data$wealth_index      <- setLabel(model_data$wealth_index, "Household wealth")
+    model_data$meduc             <- setLabel(model_data$meduc, "Mother's education")
+    model_data$mother_age_group  <- setLabel(model_data$mother_age_group, "Mother's age")
+
+    model_data <- model_data |>
+      mutate(
+        # 1. First, create the exact Surv-compatible time windows
+        time_start = case_when(
+          outcome_event == 0  ~ event_time,   # Exact event: starts at vaccine day
+          outcome_event == -1 ~ 0,            # Left censored: starts at birth (0)
+          outcome_event == 1  ~ censor_time,  # Right censored: starts at interview day
+          TRUE ~ NA_real_
+        ),
+
+        time_end = case_when(
+          outcome_event == 0  ~ event_time,   # Exact event: ends at vaccine day
+          outcome_event == -1 ~ censor_time,  # Left censored: ends at interview day
+          outcome_event == 1  ~ NA_real_,     # Right censored: open-ended upper bound
+          TRUE ~ NA_real_
+        ),
+
+        # 2. Now map your outcome_event to R's Surv(..., type="interval") standards
+        # 0 = right censored, 1 = exact event, 2 = left censored
+        status = case_when(
+          outcome_event == 0  ~ 1,  # Exact event
+          outcome_event == -1 ~ 2,  # Left censored
+          outcome_event == 1  ~ 0,  # Right censored
+          TRUE ~ NA_real_
+        )
+      )
+
+    # checks to modify time points for people receiving vax before b.day
+    model_data$time_start <- ifelse(model_data$time_start < 0, 1, model_data$time_start)
+    model_data$time_end <- ifelse(model_data$time_end < 0, 1, model_data$time_end)
+
+    model_data$time_start <- ifelse(model_data$time_start == 0, 1, model_data$time_start)
+    model_data$time_end <- ifelse(model_data$time_end == 0, 1, model_data$time_end)
+
+    # fit <- survreg(
+    #   Surv(time_start, time_end, status, type = "interval") ~
+    #     heatwave + residence + birth_order + place_delivery + child_gender +
+    #     time_to_hf + wealth_index + meduc + mother_age_group,
+    #   weights = wt,
+    #   dist = 'weibull',
+    #   data = model_data,
+    #   robust = TRUE,
+    # )
+    surv_design <- svydesign(
+      id = ~v021,          # Primary Sampling Unit / Cluster
+      strata = ~v022,      # Stratification variable/022
+      weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
+      data = vax_data_plot,
+      nest = TRUE
+    )
+    options(survey.lonely.psu = 'adjust')
+
+    fit <- svysurvreg(
+      Surv(time_start, time_end, status, type = "interval") ~
+        heatwave + residence + birth_order + place_delivery + child_gender +
+        time_to_hf + wealth_index + meduc + mother_age_group,
+      dist = 'weibull',
+      design = surv_design,
+      data = model_data
+    )
+
+    result <- autoReg(fit, uni = F)
+    flextable::save_as_image(
+      x = result %>% myft(),
+      path = paste0('output/img/', antigen[i], '/(survival-weibull)model-table.png'),
+      res = 500
+    )
+
+    p <- mod_modelPlot(fit)
+    png(
+      filename = paste0("output/img/", antigen[i], "/(survival-weibull)model-plot.png"),
+      width = 12,
+      height = 9,
+      units = "in",
+      res = 500
+    )
+
+    print(p)
+    dev.off()
+  }
+}
+
+
+# Bayesian models -------------------------------------------------------------------
 
 b1 <- brm(
   time_outcome | weights(wt) + cens(outcome_event) ~
@@ -377,7 +1319,7 @@ b1 <- brm(
     heatwave + residence + admin +
 
     birth_order + num_anc_visits + place_delivery + child_gender +
-    mother_occupation + time_to_hf + wealth_index + meduc + mother_age_birth,
+    mother_occupation + time_to_hf + wealth_index + meduc + mother_age_group,
     #(1 | caseid),
 
   family = weibull(),
