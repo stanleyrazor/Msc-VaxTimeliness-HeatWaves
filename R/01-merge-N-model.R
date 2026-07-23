@@ -871,12 +871,23 @@ for (i in 1:length(antigen)) {
                     , cdata |> mutate(wt = as.character(wt)),
                     by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
 
+  if (antigen[i] == 'bcg') {
+    vax_data$due_date = vax_data$birth_date
+  }
+
   vax_data <- vax_data |> filter(!is.na(vaxx_date)) |>
     mutate(
       wt = as.numeric(wt),
-      delay = as.numeric(vaxx_date - due_date),
-      delayclass = ifelse(delay > 28, 1, 0)
+      delay = as.numeric(vaxx_date - due_date)
     )
+
+  # correcting for negatives in BCG vax, as it is given at birth (cant get it earlier than that)
+  if (antigen[i] == 'bcg') {
+    vax_data$delay = ifelse(vax_data$delay < 0, 0, vax_data$delay)
+  }
+
+  vax_data <- vax_data |>
+    mutate(delayclass = ifelse(delay > 28, 1, 0))
 
   model_data <- vax_data |>
     data.frame() |>
@@ -1275,7 +1286,7 @@ for (i in 1:length(antigen)) {
       id = ~v021,          # Primary Sampling Unit / Cluster
       strata = ~v022,      # Stratification variable/022
       weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
-      data = vax_data_plot,
+      data = model_data,
       nest = TRUE
     )
     options(survey.lonely.psu = 'adjust')
