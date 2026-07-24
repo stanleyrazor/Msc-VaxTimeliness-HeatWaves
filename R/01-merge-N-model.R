@@ -843,7 +843,7 @@ setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 
 antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1')
-antigen_times <- pmax(0, c(0, c(6, 10, 14)*7, 9*30.4) - 7)
+antigen_times <- pmax(1, c(0, c(6, 10, 14)*7, 9*30.4) - 7)
 
 for (i in 1:length(antigen)) {
 
@@ -1135,6 +1135,14 @@ for (i in 1:length(antigen)) {
         delayclass = ifelse(delay > 28, 1, 0)
       )
 
+    # omitting people vaxxed way before due dates (-7 is max before)
+    # omitting people who have not met vaccine age requirements: 7 days before vaxx
+    vax_data <- vax_data |> filter(delay >= -7 | is.na(delay))
+    age_days <- as.numeric(vax_data$interview_date - vax_data$birth_date)
+    age_id_omit <- which(age_days < (antigen_times[i]))
+    if (length(age_id_omit) == 1) {vax_data <- vax_data[-age_id_omit, ]}
+    min_age <- min(as.numeric(vax_data$interview_date - vax_data$birth_date))
+
     model_data <- vax_data |>
       data.frame() |>
       transmute(
@@ -1244,34 +1252,41 @@ for (i in 1:length(antigen)) {
         # 1. First, create the exact Surv-compatible time windows
         time_start = case_when(
           outcome_event == 0  ~ event_time,   # Exact event: starts at vaccine day
-          outcome_event == -1 ~ 0,            # Left censored: starts at birth (0)
+          outcome_event == -1 ~ antigen_times[i],            # Interval censored: starts at vaccine due date (7 days before schedule) #* was initially 0
           outcome_event == 1  ~ censor_time,  # Right censored: starts at interview day
           TRUE ~ NA_real_
         ),
 
         time_end = case_when(
           outcome_event == 0  ~ event_time,   # Exact event: ends at vaccine day
-          outcome_event == -1 ~ censor_time,  # Left censored: ends at interview day
+          outcome_event == -1 ~ censor_time,  # Interval censored: ends at interview day
           outcome_event == 1  ~ NA_real_,     # Right censored: open-ended upper bound
           TRUE ~ NA_real_
         ),
 
         # 2. Now map your outcome_event to R's Surv(..., type="interval") standards
-        # 0 = right censored, 1 = exact event, 2 = left censored
+        # 0 = right censored, 1 = exact event, 2 = left censored, 3 = interval censored
         status = case_when(
           outcome_event == 0  ~ 1,  # Exact event
-          outcome_event == -1 ~ 2,  # Left censored
+          outcome_event == -1 ~ 3,  # Interval censored was 2=Left censored
           outcome_event == 1  ~ 0,  # Right censored
           TRUE ~ NA_real_
         )
       )
 
-    # checks to modify time points for people receiving vax before b.day
-    model_data$time_start <- ifelse(model_data$time_start < 0, 1, model_data$time_start)
-    model_data$time_end <- ifelse(model_data$time_end < 0, 1, model_data$time_end)
+    # a stop check if time_end < time_start: only managed to catch one case in i=3
+    if (i == 3) model_data <- model_data |> mutate(time_end = ifelse(time_start > time_end, time_start + 1, time_end))
+    # stopifnot(model_data |> filter(status == 3) |> mutate(check = time_end < time_start) |> pull(check) |> sum() == 0)
+    # table(model_data$time_start[model_data$time_start < 0]);summary(model_data$time_end);summary(model_data$time_start)
 
-    model_data$time_start <- ifelse(model_data$time_start == 0, 1, model_data$time_start)
-    model_data$time_end <- ifelse(model_data$time_end == 0, 1, model_data$time_end)
+    # BCG checks to modify time points for people receiving vax before b.day
+    if (antigen[i] == 'bcg') {
+      model_data$time_start <- ifelse(model_data$time_start < 0, 1, model_data$time_start)
+      model_data$time_end <- ifelse(model_data$time_end < 0, 1, model_data$time_end)
+
+      model_data$time_start <- ifelse(model_data$time_start == 0, 1, model_data$time_start)
+      model_data$time_end <- ifelse(model_data$time_end == 0, 1, model_data$time_end)
+    }
 
     # fit <- survreg(
     #   Surv(time_start, time_end, status, type = "interval") ~
