@@ -22,7 +22,7 @@ d2 <- d1 |>
   # omitting over 36 months old children & alive kids
   filter(b19 <= 36 & b5 == 1) |>
 
-  select(caseid, bidx, v021, v022, wt = v005, cluster = v001, residence = v025, admin = v024,
+  select(caseid, bidx, v021, v022, geozone = v024, wt = v005, cluster = v001, residence = v025, admin = v024,
          birth_order = bord, num_anc_visits = m14, place_delivery = m15,
          child_gender = b4, mother_occupation = v717, time_to_hf = v483a,
          wealth_index = v190, meduc = v106, m_current_age = v012, child_age = b19

@@ -1,7 +1,7 @@
 
 # reading KE-DHS data & trying vaccine timeliness on Measles
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
-               ggpubr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
+               purrr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
                ggsurvfit, icenReg, sf, kableExtra, tidyr, viridisLite, autoReg, flexsurv,
                survey)
 mvs <- naniar::miss_var_summary
@@ -23,7 +23,7 @@ cdata <- readRDS('data/processed/dhs-covariates.rds')
 # processed temperature data - at pixel level (buffered)
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
 cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
-cds_geoloc$heatwave <- cds_geoloc$p >= .8
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 # IN CASE WE NEED IT: processed temperature data - at areal level (zonal aggregation)
@@ -835,12 +835,10 @@ ggsave(filename = paste0(vax_used_folder, "Mother Age.png"), height = 10, width 
 
 # Models ------------------------------------------------------------------
 
-
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
 cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
 cds_geoloc$heatwave <- cds_geoloc$p >= .75
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
-
 
 antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1')
 antigen_times <- pmax(1, c(0, c(6, 10, 14)*7, 9*30.4) - 7)
@@ -886,14 +884,13 @@ for (i in 1:length(antigen)) {
     vax_data$delay = ifelse(vax_data$delay < 0, 0, vax_data$delay)
   }
 
-  vax_data <- vax_data |>
-    mutate(delayclass = ifelse(delay > 28, 1, 0))
+  vax_data <- vax_data |> mutate(delayclass = ifelse(delay > 28, 1, 0))
 
   model_data <- vax_data |>
     data.frame() |>
     transmute(
       delay,
-      v021, v022, wt,
+      v021, v022, geozone, wt,
 
       delayclass = factor(
         delayclass,
@@ -985,9 +982,16 @@ for (i in 1:length(antigen)) {
           "40–44 years",
           "45 years or older"
         )
-      )
+      ),
+
+      geozone = factor(geozone,
+                       levels = c("north west", "north east", "north central", "south east",
+                                  "south south", "south west"),
+                       labels = c("North West", "North East", "North Central", "South East",
+                                  "South South", "South West"))
     )
 
+  model_data$geozone           <- setLabel(model_data$geozone, "Geographic region")
   model_data$delayclass        <- setLabel(model_data$delayclass, "Vaccination delay (0/1)")
   model_data$delay             <- setLabel(model_data$delay, "Vaccination delay (days)")
   model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
@@ -1013,7 +1017,7 @@ for (i in 1:length(antigen)) {
   fit <- svyglm(
     delay ~
       heatwave + residence + birth_order + place_delivery + child_gender +
-      time_to_hf + wealth_index + meduc + mother_age_group,
+      time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = gaussian(),
     design = glm_design,
     data = model_data
@@ -1069,7 +1073,7 @@ for (i in 1:length(antigen)) {
   fit <- svyglm(
     delayclass ~
       heatwave + residence + birth_order + place_delivery + child_gender +
-      time_to_hf + wealth_index + meduc + mother_age_group,
+      time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = quasibinomial(),
     design = glm_design,
     data = model_data
@@ -1146,7 +1150,7 @@ for (i in 1:length(antigen)) {
     model_data <- vax_data |>
       data.frame() |>
       transmute(
-        wt, v021, v022,
+        wt, v021, v022, geozone,
 
         event_time, outcome_event, censor_time,
 
@@ -1234,9 +1238,16 @@ for (i in 1:length(antigen)) {
             "40–44 years",
             "45 years or older"
           )
-        )
+        ),
+
+        geozone = factor(geozone,
+                         levels = c("north west", "north east", "north central", "south east",
+                                    "south south", "south west"),
+                         labels = c("North West", "North East", "North Central", "South East",
+                                    "South South", "South West"))
       )
 
+    model_data$geozone           <- setLabel(model_data$geozone, "Geographic region")
     model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
     model_data$residence         <- setLabel(model_data$residence, "Place of residence")
     model_data$birth_order       <- setLabel(model_data$birth_order, "Birth order")
@@ -1309,7 +1320,7 @@ for (i in 1:length(antigen)) {
     fit <- svysurvreg(
       Surv(time_start, time_end, status, type = "interval") ~
         heatwave + residence + birth_order + place_delivery + child_gender +
-        time_to_hf + wealth_index + meduc + mother_age_group,
+        time_to_hf + wealth_index + meduc + mother_age_group + geozone,
       dist = 'weibull',
       design = surv_design,
       data = model_data
