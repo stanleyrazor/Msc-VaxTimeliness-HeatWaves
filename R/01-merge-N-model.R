@@ -7,6 +7,8 @@ pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms
 mvs <- naniar::miss_var_summary
 source('R/autoReg-modifier.R')
 
+
+
 # Data --------------------------------------------------------------------
 
 # DHS Geo data - spatial join — same CRS etc.
@@ -122,7 +124,7 @@ kbl(
 # processed temperature data - at pixel level (buffered)
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
 cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
-cds_geoloc$heatwave <- cds_geoloc$p >= .8
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
 results <- cds_geoloc |> select(cluster, date, heatwave) |>
@@ -1345,6 +1347,43 @@ for (i in 1:length(antigen)) {
     print(p)
     dev.off()
   }
+}
+
+
+
+# Cluster locations -------------------------------------------------------
+
+{
+
+  g1 <- st_read("data/dhs/NG_2024_DHS_03262026_919_211396/NGGE8AFL/NGGE8AFL.shp") |>
+    select(cluster = DHSCLUST, residence = URBAN_RURA) |>
+    mutate(residence = ifelse(residence == 'U', 'Urban', 'Rural'))
+
+  shp <- readRDS('data/shp/gadm/gadm41_NGA_2_pk.rds') |> terra::unwrap() |>
+    st_as_sf() |> select(GID_2)
+
+  p <- ggplot() +
+    geom_sf(data = shp,
+            colour = "grey70",
+            fill = NA,
+            linewidth = 0.1) +
+    geom_sf(data = g1, aes(colour = residence)) +
+    labs(color = 'Residence') +
+    theme_void(base_family = "Times New Roman") +
+    theme(
+      legend.position = "right",
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold", hjust = 0.5)
+    )
+
+  ## optionally save
+  ggsave(
+    paste0("output/img/cluster-locations.png"),
+    p,
+    width = 7,
+    height = 7,
+    dpi = 1000
+  )
 }
 
 
