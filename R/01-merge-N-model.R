@@ -862,9 +862,22 @@ for (i in 1:length(antigen)) {
   # and sum the 'heatwave' column for @ child
   results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
                         .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
-                        by = .EACHI]
+                        by = .EACHI] |>
+    setNames(c('cluster', 'start_dt', 'end_dt', 'heatwave')) |>
+    distinct()
+  tx5x <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                        .(tx5x = mean(tx5x, na.rm = TRUE)),
+                        by = .EACHI] |>
+    setNames(c('cluster', 'start_dt', 'end_dt', 'tx5x')) |>
+    distinct()
 
-  vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
+  # merging to have the heatwave and temperature variable
+  vax_data <- merge(
+    vax_data, results,
+    by = c('cluster', 'start_dt', 'end_dt'),
+    all.x = T
+  ) |>
+    mutate(heatwave = ifelse(heatwave == 0, 'absent', 'present'))
 
   # merging with covariates
   vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
@@ -1063,15 +1076,6 @@ for (i in 1:length(antigen)) {
   dev.off()
 
   # logistic regression model
-  glm_design <- svydesign(
-    id = ~v021,          # Primary Sampling Unit / Cluster
-    strata = ~v022,      # Stratification variable/022
-    weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
-    data = model_data,
-    nest = TRUE
-  )
-  options(survey.lonely.psu = 'adjust')
-
   fit <- svyglm(
     delayclass ~
       heatwave + residence + birth_order + place_delivery + child_gender +
@@ -1125,9 +1129,22 @@ for (i in 1:length(antigen)) {
     # and sum the 'heatwave' column for @ child
     results <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
                           .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
-                          by = .EACHI]
+                          by = .EACHI] |>
+      setNames(c('cluster', 'start_dt', 'end_dt', 'heatwave')) |>
+      distinct()
+    tx5x <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                       .(tx5x = mean(tx5x, na.rm = TRUE)),
+                       by = .EACHI] |>
+      setNames(c('cluster', 'start_dt', 'end_dt', 'tx5x')) |>
+      distinct()
 
-    vax_data$heatwave <- ifelse(results$heatwave_sum == 0, 'absent', 'present')
+    # merging to have the heatwave and temperature variable
+    vax_data <- merge(
+      vax_data, results,
+      by = c('cluster', 'start_dt', 'end_dt'),
+      all.x = T
+    ) |>
+      mutate(heatwave = ifelse(heatwave == 0, 'absent', 'present'))
 
     # merging with covariates
     vax_data <- merge(vax_data |> mutate(across(c(wt, caseid, bidx), as.character))
@@ -1294,11 +1311,8 @@ for (i in 1:length(antigen)) {
 
     # BCG checks to modify time points for people receiving vax before b.day
     if (antigen[i] == 'bcg') {
-      model_data$time_start <- ifelse(model_data$time_start < 0, 1, model_data$time_start)
-      model_data$time_end <- ifelse(model_data$time_end < 0, 1, model_data$time_end)
-
-      model_data$time_start <- ifelse(model_data$time_start == 0, 1, model_data$time_start)
-      model_data$time_end <- ifelse(model_data$time_end == 0, 1, model_data$time_end)
+      model_data$time_start <- ifelse(model_data$time_start <= 0, 1, model_data$time_start)
+      model_data$time_end <- ifelse(model_data$time_end <= 0, 1, model_data$time_end)
     }
 
     # fit <- survreg(
