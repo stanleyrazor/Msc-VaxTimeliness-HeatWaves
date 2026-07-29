@@ -28,6 +28,11 @@ cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
 cds_geoloc$heatwave <- cds_geoloc$p >= .75
 setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
 
+# processed data on the heat index
+hi_data <- arrow::read_parquet('data/processed/heatindex-processed.parquet') |>
+  mutate(cluster = as.character(cluster))
+setDT(hi_data)
+
 # IN CASE WE NEED IT: processed temperature data - at areal level (zonal aggregation)
 # cds_areal <- arrow::read_parquet('data/processed/admin2-processed.parquet')
 # cds_areal$heatwave <- cds_areal$p >= .9
@@ -870,6 +875,12 @@ for (i in 1:length(antigen)) {
                         by = .EACHI] |>
     setNames(c('cluster', 'start_dt', 'end_dt', 'tx5x')) |>
     distinct()
+  heatindex <- hi_data[vax_data,
+                       on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                       .(heatindex = mean(heatindex, na.rm = TRUE)),
+                       by = .EACHI] |>
+    setnames(c('cluster', 'start_dt', 'end_dt', 'heatindex')) |>
+    unique()
 
   # merging to have the heatwave and temperature variable
   vax_data <- merge(
@@ -877,6 +888,7 @@ for (i in 1:length(antigen)) {
     by = c('cluster', 'start_dt', 'end_dt'),
     all.x = T
   ) |>
+    merge(heatindex, by = c('cluster', 'start_dt', 'end_dt'), all.x = T) |>
     mutate(heatwave = ifelse(heatwave == 0, 'absent', 'present'))
 
   # merging with covariates
@@ -884,9 +896,7 @@ for (i in 1:length(antigen)) {
                     , cdata |> mutate(wt = as.character(wt)),
                     by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
 
-  if (antigen[i] == 'bcg') {
-    vax_data$due_date = vax_data$birth_date
-  }
+  {if (antigen[i] == 'bcg') vax_data$due_date = vax_data$birth_date}
 
   vax_data <- vax_data |> filter(!is.na(vaxx_date)) |>
     mutate(
@@ -895,9 +905,7 @@ for (i in 1:length(antigen)) {
     )
 
   # correcting for negatives in BCG vax, as it is given at birth (cant get it earlier than that)
-  if (antigen[i] == 'bcg') {
-    vax_data$delay = ifelse(vax_data$delay < 0, 0, vax_data$delay)
-  }
+  {if (antigen[i] == 'bcg') vax_data$delay = ifelse(vax_data$delay < 0, 0, vax_data$delay)}
 
   vax_data <- vax_data |> mutate(delayclass = ifelse(delay > 28, 1, 0))
 
@@ -906,6 +914,20 @@ for (i in 1:length(antigen)) {
     transmute(
       delay,
       v021, v022, geozone, wt,
+
+      heatindex = case_when(
+        heatindex < 26.67                       ~ "Normal",
+        heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
+        heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
+        heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+        heatindex >= 51.67                      ~ "Extreme Danger",
+        TRUE                                    ~ NA_character_
+      ),
+      heatindex = factor(
+        heatindex,
+        labels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger"),
+        levels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger")
+      ),
 
       delayclass = factor(
         delayclass,
@@ -1010,6 +1032,7 @@ for (i in 1:length(antigen)) {
   model_data$delayclass        <- setLabel(model_data$delayclass, "Vaccination delay (0/1)")
   model_data$delay             <- setLabel(model_data$delay, "Vaccination delay (days)")
   model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
+  model_data$heatindex         <- setLabel(model_data$heatindex, "Heat Index")
   model_data$residence         <- setLabel(model_data$residence, "Place of residence")
   model_data$birth_order       <- setLabel(model_data$birth_order, "Birth order")
   model_data$place_delivery    <- setLabel(model_data$place_delivery, "Place of delivery")
@@ -1020,6 +1043,7 @@ for (i in 1:length(antigen)) {
   model_data$mother_age_group  <- setLabel(model_data$mother_age_group, "Mother's age")
 
   # regression model
+  options(survey.lonely.psu = 'adjust')
   glm_design <- svydesign(
     id = ~v021,          # Primary Sampling Unit / Cluster
     strata = ~v022,      # Stratification variable/022
@@ -1027,11 +1051,10 @@ for (i in 1:length(antigen)) {
     data = model_data,
     nest = TRUE
   )
-  options(survey.lonely.psu = 'adjust')
 
   fit <- svyglm(
     delay ~
-      heatwave + residence + birth_order + place_delivery + child_gender +
+      heatindex + residence + birth_order + place_delivery + child_gender +
       time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = gaussian(),
     design = glm_design,
@@ -1078,7 +1101,7 @@ for (i in 1:length(antigen)) {
   # logistic regression model
   fit <- svyglm(
     delayclass ~
-      heatwave + residence + birth_order + place_delivery + child_gender +
+      heatindex + residence + birth_order + place_delivery + child_gender +
       time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = quasibinomial(),
     design = glm_design,
@@ -1137,6 +1160,12 @@ for (i in 1:length(antigen)) {
                        by = .EACHI] |>
       setNames(c('cluster', 'start_dt', 'end_dt', 'tx5x')) |>
       distinct()
+    heatindex <- hi_data[vax_data,
+                         on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                         .(heatindex = mean(heatindex, na.rm = TRUE)),
+                         by = .EACHI] |>
+      setnames(c('cluster', 'start_dt', 'end_dt', 'heatindex')) |>
+      unique()
 
     # merging to have the heatwave and temperature variable
     vax_data <- merge(
@@ -1144,6 +1173,7 @@ for (i in 1:length(antigen)) {
       by = c('cluster', 'start_dt', 'end_dt'),
       all.x = T
     ) |>
+      merge(heatindex, by = c('cluster', 'start_dt', 'end_dt'), all.x = T) |>
       mutate(heatwave = ifelse(heatwave == 0, 'absent', 'present'))
 
     # merging with covariates
@@ -1172,6 +1202,20 @@ for (i in 1:length(antigen)) {
         wt, v021, v022, geozone,
 
         event_time, outcome_event, censor_time,
+
+        heatindex = case_when(
+          heatindex < 26.67                       ~ "Normal",
+          heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
+          heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
+          heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+          heatindex >= 51.67                      ~ "Extreme Danger",
+          TRUE                                    ~ NA_character_
+        ),
+        heatindex = factor(
+          heatindex,
+          levels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger"),
+          labels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger")
+        ),
 
         heatwave = factor(
           heatwave,
@@ -1268,6 +1312,7 @@ for (i in 1:length(antigen)) {
 
     model_data$geozone           <- setLabel(model_data$geozone, "Geographic region")
     model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
+    model_data$heatindex         <- setLabel(model_data$heatindex, "Heat Index")
     model_data$residence         <- setLabel(model_data$residence, "Place of residence")
     model_data$birth_order       <- setLabel(model_data$birth_order, "Birth order")
     model_data$place_delivery    <- setLabel(model_data$place_delivery, "Place of delivery")
@@ -1335,7 +1380,7 @@ for (i in 1:length(antigen)) {
 
     fit <- svysurvreg(
       Surv(time_start, time_end, status, type = "interval") ~
-        heatwave + residence + birth_order + place_delivery + child_gender +
+        heatindex + residence + birth_order + place_delivery + child_gender +
         time_to_hf + wealth_index + meduc + mother_age_group + geozone,
       dist = 'weibull',
       design = surv_design,
