@@ -7,8 +7,6 @@ pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms
 mvs <- naniar::miss_var_summary
 source('R/autoReg-modifier.R')
 
-
-
 # Data --------------------------------------------------------------------
 
 # DHS Geo data - spatial join — same CRS etc.
@@ -21,6 +19,7 @@ g2 <- st_join(g1, shp[, "GID_2"], left = TRUE) |> st_drop_geometry()
 # ldata - vax-data | cdata - covariates
 ldata <- readRDS('data/processed/vaxdata-components.rds')
 cdata <- readRDS('data/processed/dhs-covariates.rds')
+master_data <- readRDS("data/processed/master-survey-dataset.rds")
 
 # processed temperature data - at pixel level (buffered)
 cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
@@ -65,7 +64,7 @@ for (i in 1:nrow(g)) {
   max <- g[i, 3]
   min <- ifelse(antigen == 'bcg', 0, max)
 
-  # the 14-day window bound
+  # the 28-day window bound
   vax_data[, `:=`(
     start_dt = due_date - min, #* change to 7
     end_dt   = due_date + max,
@@ -510,7 +509,7 @@ ggsave(
 vax_data <- ldata[['mcv1']]; setDT(vax_data)
 vax_used_folder <- 'output/img/mcv1/'
 
-# the 14-day window bound
+# the 28-day window bound
 vax_data[, `:=`(
   start_dt = due_date - 28, #* change to 7
   end_dt   = due_date + 28,
@@ -853,13 +852,13 @@ antigen_times <- pmax(1, c(0, c(6, 10, 14)*7, 9*30.4) - 7)
 for (i in 1:length(antigen)) {
 
   message('Currently analyzing: ', antigen[i])
-  use_window_min <- ifelse(antigen[i] == 'bcg', 0, 28)
+  use_window_min <- ifelse(antigen[i] == 'bcg', 0, 7)
   vax_data <- ldata[[antigen[i]]]; setDT(vax_data)
 
-  # the 14-day window bound
+  # the 28-day window bound
   vax_data[, `:=`(
     start_dt = due_date - use_window_min,
-    end_dt   = due_date + 28,
+    end_dt   = due_date + 7,
     cluster  = as.character(cluster)
   )]
 
@@ -912,6 +911,7 @@ for (i in 1:length(antigen)) {
   model_data <- vax_data |>
     data.frame() |>
     transmute(
+      caseid, bidx,
       delay,
       v021, v022, geozone, wt,
 
@@ -919,14 +919,18 @@ for (i in 1:length(antigen)) {
         heatindex < 26.67                       ~ "Normal",
         heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
         heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
-        heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
-        heatindex >= 51.67                      ~ "Extreme Danger",
+        # heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+        # heatindex >= 51.67                      ~ "Extreme Danger",
         TRUE                                    ~ NA_character_
       ),
       heatindex = factor(
         heatindex,
-        labels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger"),
-        levels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger")
+        labels = c("Normal", "Caution", "Extreme Caution"
+                   # "Danger", "Extreme Danger"
+                   ),
+        levels = c("Normal", "Caution", "Extreme Caution"
+                   # "Danger", "Extreme Danger"
+                   )
       ),
 
       delayclass = factor(
@@ -1027,6 +1031,7 @@ for (i in 1:length(antigen)) {
                        labels = c("North West", "North East", "North Central", "South East",
                                   "South South", "South West"))
     )
+  stopifnot(sum(is.na(model_data$heatindex)) == 0)
 
   model_data$geozone           <- setLabel(model_data$geozone, "Geographic region")
   model_data$delayclass        <- setLabel(model_data$delayclass, "Vaccination delay (0/1)")
@@ -1044,13 +1049,30 @@ for (i in 1:length(antigen)) {
 
   # regression model
   options(survey.lonely.psu = 'adjust')
-  glm_design <- svydesign(
+
+  mstd <- merge(master_data,
+                model_data |>
+                  mutate(across(c(bidx, v021, v022), as.character),
+                         selector = 'Include') |>
+                  select(-wt),
+                by = c('caseid', 'bidx', 'v021', 'v022'), all.x = T) |>
+    mutate(selector = ifelse(is.na(selector), 'Not included', selector))
+
+  full_surv_design <- svydesign(
     id = ~v021,          # Primary Sampling Unit / Cluster
     strata = ~v022,      # Stratification variable/022
-    weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
-    data = model_data,
+    weights = ~wt,       # DHS weight (remember to divide v005 by 1,000,000 first)
+    data = mstd,
     nest = TRUE
   )
+  glm_design <- subset(full_surv_design, selector == 'Include')
+  # glm_design <- svydesign(
+  #   id = ~v021,          # Primary Sampling Unit / Cluster
+  #   strata = ~v022,      # Stratification variable/022
+  #   weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
+  #   data = model_data,
+  #   nest = TRUE
+  # )
 
   fit <- svyglm(
     delay ~
@@ -1058,7 +1080,7 @@ for (i in 1:length(antigen)) {
       time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = gaussian(),
     design = glm_design,
-    data = model_data
+    data = mstd
   )
   # fit <- lm(
   #   delay ~
@@ -1105,7 +1127,7 @@ for (i in 1:length(antigen)) {
       time_to_hf + wealth_index + meduc + mother_age_group + geozone,
     family = quasibinomial(),
     design = glm_design,
-    data = model_data
+    data = mstd
   )
 
   # fit <- glm(
@@ -1138,13 +1160,13 @@ for (i in 1:length(antigen)) {
 
   # cox PH model
   {
-    use_window_min <- ifelse(antigen[i] == 'bcg', 0, 28)
+    use_window_min <- ifelse(antigen[i] == 'bcg', 0, 7)
     vax_data <- ldata[[antigen[i]]]; setDT(vax_data)
 
-    # the 14-day window bound
+    # the 28-day window bound
     vax_data[, `:=`(
       start_dt = due_date - use_window_min,
-      end_dt   = due_date + 28,
+      end_dt   = due_date + 7,
       cluster  = as.character(cluster)
     )]
 
@@ -1166,6 +1188,7 @@ for (i in 1:length(antigen)) {
                          by = .EACHI] |>
       setnames(c('cluster', 'start_dt', 'end_dt', 'heatindex')) |>
       unique()
+    # summary(heatindex$heatindex)
 
     # merging to have the heatwave and temperature variable
     vax_data <- merge(
@@ -1193,12 +1216,14 @@ for (i in 1:length(antigen)) {
     vax_data <- vax_data |> filter(delay >= -7 | is.na(delay))
     age_days <- as.numeric(vax_data$interview_date - vax_data$birth_date)
     age_id_omit <- which(age_days < (antigen_times[i]))
-    if (length(age_id_omit) == 1) {vax_data <- vax_data[-age_id_omit, ]}
+    {if (length(age_id_omit) == 1) {vax_data <- vax_data[-age_id_omit, ]}}
     min_age <- min(as.numeric(vax_data$interview_date - vax_data$birth_date))
 
     model_data <- vax_data |>
       data.frame() |>
       transmute(
+        caseid, bidx,
+
         wt, v021, v022, geozone,
 
         event_time, outcome_event, censor_time,
@@ -1207,14 +1232,18 @@ for (i in 1:length(antigen)) {
           heatindex < 26.67                       ~ "Normal",
           heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
           heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
-          heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
-          heatindex >= 51.67                      ~ "Extreme Danger",
+          # heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+          # heatindex >= 51.67                      ~ "Extreme Danger",
           TRUE                                    ~ NA_character_
         ),
         heatindex = factor(
           heatindex,
-          levels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger"),
-          labels = c("Normal", "Caution", "Extreme Caution", "Danger", "Extreme Danger")
+          levels = c("Normal", "Caution", "Extreme Caution"
+                     # "Danger", "Extreme Danger"
+                     ),
+          labels = c("Normal", "Caution", "Extreme Caution"
+                     # "Danger", "Extreme Danger"
+                     )
         ),
 
         heatwave = factor(
@@ -1309,6 +1338,7 @@ for (i in 1:length(antigen)) {
                          labels = c("North West", "North East", "North Central", "South East",
                                     "South South", "South West"))
       )
+    stopifnot(sum(is.na(model_data$heatindex)) == 0)
 
     model_data$geozone           <- setLabel(model_data$geozone, "Geographic region")
     model_data$heatwave          <- setLabel(model_data$heatwave, "Heatwave")
@@ -1350,7 +1380,7 @@ for (i in 1:length(antigen)) {
       )
 
     # a stop check if time_end < time_start: only managed to catch one case in i=3
-    if (i == 3) model_data <- model_data |> mutate(time_end = ifelse(time_start > time_end, time_start + 1, time_end))
+    {if (i == 3) model_data <- model_data |> mutate(time_end = ifelse(time_start > time_end, time_start + 1, time_end))}
     # stopifnot(model_data |> filter(status == 3) |> mutate(check = time_end < time_start) |> pull(check) |> sum() == 0)
     # table(model_data$time_start[model_data$time_start < 0]);summary(model_data$time_end);summary(model_data$time_start)
 
@@ -1369,13 +1399,31 @@ for (i in 1:length(antigen)) {
     #   data = model_data,
     #   robust = TRUE,
     # )
-    surv_design <- svydesign(
+
+    # creating the full design
+    mstd <- merge(master_data,
+          model_data |>
+            mutate(across(c(bidx, v021, v022), as.character),
+                   selector = 'Include') |>
+            select(-wt),
+          by = c('caseid', 'bidx', 'v021', 'v022'), all.x = T) |>
+      mutate(selector = ifelse(is.na(selector), 'Not included', selector))
+
+    full_surv_design <- svydesign(
       id = ~v021,          # Primary Sampling Unit / Cluster
       strata = ~v022,      # Stratification variable/022
       weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
-      data = model_data,
+      data = mstd,
       nest = TRUE
     )
+    surv_design <- subset(full_surv_design, selector == 'Include')
+    # surv_design <- svydesign(
+    #   id = ~v021,          # Primary Sampling Unit / Cluster
+    #   strata = ~v022,      # Stratification variable/022
+    #   weights = ~wt,     # DHS weight (remember to divide v005 by 1,000,000 first)
+    #   data = model_data,
+    #   nest = TRUE
+    # )
     options(survey.lonely.psu = 'adjust')
 
     fit <- svysurvreg(
@@ -1384,7 +1432,7 @@ for (i in 1:length(antigen)) {
         time_to_hf + wealth_index + meduc + mother_age_group + geozone,
       dist = 'weibull',
       design = surv_design,
-      data = model_data
+      data = mstd
     )
 
     result <- autoReg(fit, uni = F)

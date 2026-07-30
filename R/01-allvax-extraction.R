@@ -7,7 +7,8 @@ make_vax_one <- function(d1, vaccine, identifier, period, timeframe = c("weeks",
   timeframe <- match.arg(timeframe)
   period <- as.numeric(period)
 
-  age_min <- if (timeframe == "weeks") floor((period * 7) / 30.4375) else period
+  #* age_min <- if (timeframe == "weeks") floor((period * 7) / 30.4375) else period
+  age_min <- ifelse(timeframe == 'weeks', floor(period * 7), floor(period * 30.4375))
 
   due_expr <- if (timeframe == "weeks") {
     expr(birth_date %m+% weeks(!!period))
@@ -20,14 +21,22 @@ make_vax_one <- function(d1, vaccine, identifier, period, timeframe = c("weeks",
   dcol <- paste0(identifier, "d")
 
   d1 |>
-    filter(b19 <= 36, b19 >= age_min, b5 == 1, .data[[identifier]] != 8) |>
+
+    # computing ages, in order to threshold by age
+    mutate(
+      interview_date = as.Date(v008a - 1, origin = "1900-01-01"),
+      birth_date = as.Date(b18 - 1, origin = "1900-01-01"),
+      age_days = as.integer(interview_date - birth_date)
+    ) |>
+
+    #* filter(b19 <= 36, b19 >= age_min, b5 == 1, .data[[identifier]] != 8) |>
+    filter(b19 <= 36, age_days >= age_min, b5 == 1, .data[[identifier]] != 8) |>
+
     mutate(
       across(starts_with(identifier), \(x) ifelse(x %in% c(9997:9998, 97:98), NA, x)),
       across(c(v024, v025), as_factor),
       v005 = v005 / 1e6,
 
-      interview_date = as.Date(v008a - 1, origin = "1900-01-01"),
-      birth_date = as.Date(b18 - 1, origin = "1900-01-01"),
       vaxx_date = make_date(.data[[ycol]], .data[[mcol]], .data[[dcol]]),
       due_date = !!due_expr,
 
@@ -120,6 +129,15 @@ d1 <- read_dta("data/dhs/NG_2024_DHS_03262026_919_211396/NGBR8BDT/NGBR8BFL.dta")
 vax_data <- make_vax_all(d1, spec)
 
 saveRDS(vax_data, "data/processed/vaxdata-components.rds")
+
+# creating the master dataset with only necessqry columns for survey design
+d2 <- d1 |>
+  select(v021, v022, caseid, bidx, wt = v005) |>
+  as_factor() |>
+  mutate(
+    across(c(bidx, v021, v022), as.character),
+    wt = as.numeric(wt) / 1e6)
+saveRDS(d2, "data/processed/master-survey-dataset.rds")
 
 # compatibility -----------------------------------------------------------
 

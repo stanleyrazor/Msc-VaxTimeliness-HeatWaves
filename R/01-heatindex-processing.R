@@ -41,22 +41,9 @@ full_dates <- seq(from=ymd('2020-01-01'), to = ymd('2024-12-31'), by = 1)
       residence = bf_gps |> pull(residence)
     ) |>
     pivot_longer(-c(cluster, residence), names_to = "layer", values_to = "temp") |>
-    mutate(layer = ymd(substr(layer, 4, 13))) |>
-    group_by(cluster) |>
-    group_split() |>
-    lapply(
-      FUN = \(dt) {
-        dt |>
-          arrange(layer) |>
-          mutate(
-            year = year(layer),
-            tx5x = slider::slide_dbl(temp, mean, .before = 4, .complete = TRUE),
-            tx5x = na.locf(tx5x, fromLast = T)
-          ) |>
-          select(cluster, residence, year, date = layer, dewpoint = tx5x)
-      }
-    ) |>
-    bind_rows()
+    mutate(date = ymd(substr(layer, 4, 13)),
+           year = year(date)) |>
+    select(cluster, residence, year, date, dewpoint = temp)
 
 }
 
@@ -77,23 +64,9 @@ full_dates <- seq(from=ymd('2020-01-01'), to = ymd('2024-12-31'), by = 1)
       residence = bf_gps |> pull(residence)
     ) |>
     pivot_longer(-c(cluster, residence), names_to = "layer", values_to = "temp") |>
-    mutate(layer = ymd(substr(layer, 4, 13))) |>
-    group_by(cluster) |>
-    group_split() |>
-    lapply(
-      FUN = \(dt) {
-        dt |>
-          arrange(layer) |>
-          mutate(
-            year = year(layer),
-            tx5x = slider::slide_dbl(temp, mean, .before = 4, .complete = TRUE),
-            tx5x = na.locf(tx5x, fromLast = T)
-          ) |>
-          select(cluster, residence, year, date = layer, airtemp = tx5x)
-      }
-    ) |>
-    bind_rows()
-
+    mutate(date = ymd(substr(layer, 4, 13)),
+           year = year(date)) |>
+    select(cluster, residence, year, date, airtemp = temp)
 }
 
 # merging
@@ -104,5 +77,68 @@ hi_data <- merge(t2, d2, by = c('cluster', 'residence', 'year', 'date')) |>
   )
 
 arrow::write_parquet(x = hi_data, sink = 'data/processed/heatindex-processed.parquet')
-rm(hi_data, t1, t2, d1, d2)
+
+
+# Plotting ----------------------------------------------------------------
+
+# obtain the cluster lon-lat, and rank by lat (northern-southern)
+plt_data <- hi_data |>
+  mutate(month = month.abb[month(date)],
+         month = factor(month, levels = month.abb, labels = month.abb)) |>
+  group_by(year, month, cluster, residence) |>
+  reframe(heatindex = mean(heatindex)) |>
+
+  merge(
+    data.frame(st_centroid(g1) |>
+                 st_coordinates()) |>
+      setNames(c('lon', 'lat')) |>
+      bind_cols(cluster = g1$cluster),
+    by = 'cluster',
+    all.x = T
+  )
+
+yrs <- sort(unique(plt_data$year))
+for(i in seq_along(yrs)){
+
+  tmp <- merge(g1, filter(plt_data, year == yrs[i]), by = "cluster")
+
+  p <- ggplot() +
+    geom_sf(data = shp, colour = "grey70", fill = NA, linewidth = 0.1) +
+    geom_sf(data = tmp, aes(colour = heatindex)) +
+    facet_wrap(~month, nrow = 3) +
+    scale_color_viridis_b(
+      option = "inferno", # "inferno" or "magma" are perfect for heat data
+      direction = 1,      # 1 puts darker/cooler colors at 15 and bright yellow at 39
+      breaks = seq(15, 39, length.out = 10),
+      guide = guide_coloursteps(
+        show.limits = TRUE,
+        even.steps = TRUE
+      ),
+      name = expression(Heat-Index~"("*degree*C*")")
+    ) +
+    labs(title = yrs[i]) +
+    theme_void(base_family = "Times New Roman") +
+    theme(
+      legend.position = "right",
+
+      legend.key.height = unit(15, "mm"),
+      legend.title = element_text(margin = margin(b = 10)),
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold", hjust = 0.5)
+    )
+
+  ## optionally save
+  ggsave(
+    paste0("output/img/heatmaps/heat index/", yrs[i], ".png"),
+    p,
+    width = 12,
+    height = 9,
+    dpi = 1000
+  )
+}
+
+# Cleanup -----------------------------------------------------------------
+
+
+rm(hi_data, t1, t2, d1, d2, mvs, g1, bf_gps, full_dates, ls_full, plt_data)
 
