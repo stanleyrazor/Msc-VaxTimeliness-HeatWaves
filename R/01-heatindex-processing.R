@@ -73,7 +73,9 @@ full_dates <- seq(from=ymd('2020-01-01'), to = ymd('2024-12-31'), by = 1)
 head(d2); head(t2)
 hi_data <- merge(t2, d2, by = c('cluster', 'residence', 'year', 'date')) |>
   mutate(
-    heatindex = heat.index(t = airtemp, dp = dewpoint, temperature.metric = 'celsius', output.metric = 'celsius')
+    heatindex = heat.index(t = airtemp, dp = dewpoint,
+                           temperature.metric = 'celsius', output.metric = 'celsius',
+                           round = Inf)
   )
 
 arrow::write_parquet(x = hi_data, sink = 'data/processed/heatindex-processed.parquet')
