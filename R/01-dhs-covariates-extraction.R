@@ -1,5 +1,4 @@
 
-
 # covariates:
 # - sampling dependent: case id, bidx, cluster, admin location, residence type sampling weights
 # - place of delivery
@@ -20,7 +19,7 @@ d1 <- read_dta("data/dhs/NG_2024_DHS_03262026_919_211396/NGBR8BDT/NGBR8BFL.dta")
 d2 <- d1 |>
 
   # omitting over 36 months old children & alive kids
-  filter(b19 <= 36 & b5 == 1) |>
+  filter(b19 < 36 & b5 == 1) |>
 
   select(caseid, bidx, v021, v022, geozone = v024, wt = v005, cluster = v001, residence = v025, admin = v024,
          birth_order = bord, num_anc_visits = m14, place_delivery = m15,

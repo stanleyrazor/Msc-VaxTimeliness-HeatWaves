@@ -12,8 +12,9 @@ Nigeria has experienced several notable heatwave events in recent decades, inclu
 
 ------------------------------------------------------------------------
 
-Nigeria's National Programme on Immunization (NPI) was established in 1978 to provide routine immunization services for children. Over the years, the programme has expanded to include additional vaccine antigens in line with the country's Expanded Programme on Immunization (EPI). According to the current national immunization schedule (Table 1.1), a child is considered fully immunized upon receiving one dose of Bacillus Calmette–Guérin (BCG), the hepatitis B birth dose, four doses of oral polio vaccine (OPV), two doses of inactivated polio vaccine (IPV), three doses each of the pentavalent, pneumococcal conjugate (PCV) and rotavirus vaccines, two doses of measles-containing vaccine (MCV), and one dose each of the yellow fever and meningitis vaccines [@ndhs].
+Nigeria's National Programme on Immunization (NPI) was established in 1978 to provide routine immunization services for children. Over the years, the programme has expanded to include additional vaccine antigens in line with the country's Expanded Programme on Immunization (EPI). According to the current national immunization schedule (Table 1.1), a child is considered fully immunized upon receiving one dose of Bacillus Calmette–Guérin (BCG), the hepatitis B birth dose, four doses of oral polio vaccine (OPV), two doses of inactivated polio vaccine (IPV), three doses each of the pentavalent, pneumococcal conjugate (PCV) and rotavirus vaccines, two doses of measles-containing vaccine (MCV), and one dose each of the yellow fever and meningitis vaccines \[@ndhs\].
 
+::: {tbl-t1}
 ```{r tbl-meth}
 #| echo: false
 #| message: false
@@ -87,6 +88,7 @@ vaccines |>
   column_spec(2, width = "7cm") |>
   row_spec(0, bold = TRUE)
 ```
+:::
 
 Despite substantial progress over recent decades, routine childhood immunization coverage in Nigeria remains below both national and global targets and continues to be characterised by marked geographical and socioeconomic disparities [@williams2024; @ogunniyi2024]. Although the proportion of children receiving all basic vaccinations increased from 13% in 2003 to 39% in 2024, coverage remains considerably lower in northern Nigeria than in the southern regions [@ndhs; @ophori2014; @alabi2024]. These inequalities have been associated with several factors, including place of delivery, maternal education, household wealth, and urban–rural residence [@ndhs; @alabi2024; @salako2024]. Consequently, Nigeria continues to account for a substantial proportion of the global burden of undervaccinated children [@ogunniyi2024]. Persistent challenges facing the national immunization programme include supply chain constraints, shortages of healthcare personnel and funding, limited geographical access to health facilities, and vaccine hesitancy driven by sociocultural and religious factors [@ogunniyi2024; @watch2023]. More recently, the COVID-19 pandemic further disrupted routine immunization services, slowing progress towards improving vaccination coverage and access [@adegoke2024].
 

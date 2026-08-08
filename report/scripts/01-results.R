@@ -1,17 +1,6 @@
-# Results
-
-## Study population
-
-The 2024 Nigeria Demographic and Health Survey (NDHS) included a total of 104,557 children. After restricting the sample to children born within the three years preceding the survey, 15,993 children remained. Further restricting the sample to children who were alive at the time of the survey resulted in a final sample of 14,916 children. The number of children eligible for analysis for each antigen, based on the recommended vaccination schedule from the National Programme on Immunization (NPI), is presented in Table 4.1 together with unweighted statistics across selected covariates. The number of children eligible for antigen-specific analysis decreased progressively across the vaccination schedule, from 14,896 children eligible for BCG at birth to 10,837 children eligible for MCV1 at 9 months. 
-
-The distribution of the characteristics was similar across the antigen-specific datasets. Approximately 79% of children had a reported travel time of less than 30 minutes to the nearest health facility across all antigens. The distribution of children across wealth index categories was relatively uniform, although the largest proportions were in the poorest (25%) and poorer (20%) quintiles, while smaller proportions were observed in the richer (19%) and richest (17%) quintiles. Maternal age at birth was concentrated among mothers aged 20–34 years. The North West geopolitical zone accounted for the largest proportion of children across the antigen-specific datasets. The number of children residing in rural areas was higher than that of children residing in urban areas. Home deliveries consistently accounted for 53% of deliveries across the antigen-specific datasets, compared with deliveries occurring at health facilities. The distribution of children by sex was balanced, with approximately 50% being female and 50% male across all antigen-specific datasets.
 
 
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-#| tbl-cap: "Study population characteristics across antigen datasets"
+# Table 1 -----------------------------------------------------------------
 
 pacman::p_load(gtsummary, dplyr)
 
@@ -19,20 +8,20 @@ pacman::p_load(gtsummary, dplyr)
 antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'vita1', 'mcv1')
 usenames <- c('BCG', 'Pentavalent 1', 'Pentavalent 2', 'Pentavalent 3', 'Vitamin A', 'MCV1')
 
-ldata <- readRDS('../data/processed/vaxdata-components.rds')
-cdata <- readRDS('../data/processed/dhs-covariates.rds')
+ldata <- readRDS('data/processed/vaxdata-components.rds')
+cdata <- readRDS('data/processed/dhs-covariates.rds')
 use_ldata <- ldata[antigen]
 
 for (i in 1:length(use_ldata)) use_ldata[[i]] <- use_ldata[[i]] |> mutate(antigen = usenames[i])
 
 d1 <- merge(bind_rows(use_ldata) |> mutate(across(c(wt, caseid, bidx), as.character))
-                  , cdata |> mutate(wt = as.character(wt)) |> select(-num_anc_visits),
-                  by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
+            , cdata |> mutate(wt = as.character(wt)) |> select(-num_anc_visits),
+            by = c('caseid', 'bidx', 'admin', 'cluster', 'wt', 'residence'), all.x = T)
 
 
 d2 <- d1 |>
   transmute(
-    
+
     Antigen = factor(antigen, labels = usenames, levels = usenames),
 
     Residence = factor(
@@ -40,21 +29,21 @@ d2 <- d1 |>
       levels = c("urban", "rural"),
       labels = c("Urban", "Rural")
     ),
-    
+
     `Birth order` = birth_order,
-    
+
     `Place of delivery` = factor(
       place_delivery,
       levels = c("home", "institution"),
       labels = c("Home", "Health facility")
     ),
-    
+
     `Child's gender` = factor(
       child_gender,
       levels = c("male", "female"),
       labels = c("Male", "Female")
     ),
-    
+
     `Travel time to the\nnearest health facility` = factor(
       time_to_hf,
       levels = c("<30 mins", "31-60 mins", "1-2 hrs", "2+ hrs"),
@@ -65,13 +54,13 @@ d2 <- d1 |>
         ">2 hours"
       )
     ),
-    
+
     `Wealth index` = factor(
       wealth_index,
       levels = c("poorest", "poorer", "middle", "richer", "richest"),
       labels = c("Poorest", "Poorer", "Middle", "Richer", "Richest")
     ),
-    
+
     `Highest level of\neducation attained by mother` = factor(
       meduc,
       levels = c("no education", "primary", "secondary", "higher"),
@@ -82,7 +71,7 @@ d2 <- d1 |>
         "Higher education"
       )
     ),
-    
+
     `Mother's age group\nat birth` = case_when(
       mother_age_birth <= 19 ~ "<=19 yrs",
       mother_age_birth >= 20 & mother_age_birth <= 24 ~ "20-24 yrs",
@@ -100,12 +89,12 @@ d2 <- d1 |>
       labels = c("≤19 years","20–24 years","25–29 years","30–34 years",
                  "35–39 years","40–44 years","45 years or older")
     ),
-    
+
     `Geopolitical zone` = factor(geozone,
-                     levels = c("north west", "north east", "north central", "south east",
-                                "south south", "south west"),
-                     labels = c("North West", "North East", "North Central", "South East",
-                                "South South", "South West"))
+                                 levels = c("north west", "north east", "north central", "south east",
+                                            "south south", "south west"),
+                                 labels = c("North West", "North East", "North Central", "South East",
+                                            "South South", "South West"))
   )
 
 d2 |>
@@ -130,19 +119,7 @@ d2 |>
   ) |>
   bold_labels() |>
   modify_header(label ~ "**Characteristic**") |>
-  modify_spanning_header(all_stat_cols() ~ "**Antigen**") |>
-  
-  as_kable_extra() |>
-  kableExtra::kable_styling(latex_options = c("hold_position", "scale_down"))
-```
+  modify_spanning_header(all_stat_cols() ~ "**Antigen**")
 
 
-## Heatwave exposure
 
-## Heat Index exposure
-
-## Vaccine timeliness
-
-## Heat exposure and vaccine timeliness
-
-## Timeliness statistics by threshold

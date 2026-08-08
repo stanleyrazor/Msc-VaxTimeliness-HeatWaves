@@ -29,8 +29,8 @@ make_vax_one <- function(d1, vaccine, identifier, period, timeframe = c("weeks",
       age_days = as.integer(interview_date - birth_date)
     ) |>
 
-    #* filter(b19 <= 36, b19 >= age_min, b5 == 1, .data[[identifier]] != 8) |>
-    filter(b19 <= 36, age_days >= age_min, b5 == 1, .data[[identifier]] != 8) |>
+    #* filter(b19 < 36, b19 >= age_min, b5 == 1, .data[[identifier]] != 8) |>
+    filter(b19 < 36, age_days >= age_min, b5 == 1, .data[[identifier]] != 8) |>
 
     mutate(
       across(starts_with(identifier), \(x) ifelse(x %in% c(9997:9998, 97:98), NA, x)),

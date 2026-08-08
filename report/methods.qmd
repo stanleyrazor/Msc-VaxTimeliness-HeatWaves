@@ -12,7 +12,7 @@ Information on childhood vaccination was obtained for children born in the three
 
 ### Temperature data
 
-Data on daily mean 2-metre air temperature for the period 1940–2024 were obtained from the European Centre for Medium-Range Weather Forecasts (ECMWF) ERA5 reanalysis via the Climate Data Store[@hersbach2023; @copernicus2023]. The data are provided on a regular 0.25° × 0.25° latitude–longitude grid (approximately 27.8 kilometres squared). The data were extracted for a spatial bounding box enclosing Nigeria (west: 2.676932°E, south: 4.0690959°N, east: 14.678014°E, north: 13.885645°N) and retrieval was carried out programmatically in R using the `ecmwfr` package[@hufkens2019], which provides an interface to the ECMWF data services and the Climate Data Store API. The downloaded files were stored on secure local storage in NetCDF format, with one file saved for each year to facilitate efficient management and analysis.
+Data on daily mean 2-metre air temperature for the period 1940–2024 and daily mean 2 metre dewpoint temperature for the period 2020–2024 were obtained from the European Centre for Medium-Range Weather Forecasts (ECMWF) ERA5 reanalysis via the Climate Data Store[@hersbach2023; @copernicus2023]. The data are provided on a regular 0.25° × 0.25° latitude–longitude grid (approximately 27.8 kilometres squared). The data were extracted for a spatial bounding box enclosing Nigeria (west: 2.676932°E, south: 4.0690959°N, east: 14.678014°E, north: 13.885645°N) and retrieval was carried out programmatically in R using the `ecmwfr` package[@hufkens2019], which provides an interface to the ECMWF data services and the Climate Data Store API. The downloaded files were stored on secure local storage in NetCDF format, with one file saved for each year to facilitate efficient management and analysis.
 
 ## Study population
 
@@ -22,60 +22,83 @@ The analysis was restricted to children born in the three years preceding the 20
 
 The primary outcomes were delays in receipt of five key routinely recommended childhood vaccine antigens: Bacillus Calmette–Guérin (BCG), the first, second and third doses of the pentavalent vaccine (Penta1, Penta2 and Penta3), and the first dose of the measles-containing vaccine (MCV1). The pentavalent vaccine protects against the combination of diphtheria, tetanus, pertussis, hepatitis B and Haemophilus influenzae type b infections. According to Nigeria's Expanded Programme on Immunization (EPI) schedule[@ophori2014], BCG is recommended at birth, Penta1 at 6 weeks, Penta2 at 10 weeks, Penta3 at 14 weeks, and MCV1 at 9 months. These antigens were selected because they represent key milestones in the infant immunization schedule and are widely used as indicators of the performance of routine immunization programmes during the first year of a child's life.
 
-For each antigen, the recommended vaccination date was calculated by adding the scheduled age at vaccination to the child's date of birth. Vaccine delay was defined as receipt of a vaccine more than 28 days after its recommended due date. Vaccinations administered before or within 28 days of the scheduled date were classified as timely. Although no universally accepted definition of vaccination delay exists, previous studies have used thresholds ranging from one week to four weeks depending on the antigen and study setting[@masters2019]. A threshold of 28 days was adopted in this study to provide a consistent definition across all vaccine antigens.
+For each antigen, the recommended vaccination date was calculated by adding the scheduled age at vaccination to the child's date of birth. Timeliness was assessed at 7 days, 14 days, 21 days and 28 days. Although no universally accepted definition of vaccination delay exists [@masters2019], this study defines vaccine delay as receipt of a vaccine more than 28 days after its recommended due date, so that vaccines administered within 28 days of the scheduled date were classified as timely [@worldhealthorganization2021]. This definition was adopted across all the antigens considered for analysis
 
-Vaccination dates recorded on vaccination cards were subjected to data quality checks based on the WHO recommended routine immunization schedule. Vaccination records were considered invalid if Penta1 was administered before 6 weeks of age, Penta2 before 10 weeks, Penta3 before 14 weeks, or MCV1 before 6 months of age. These checks were undertaken to identify the extent of implausible vaccination dates prior to analysis. Because vaccination dates were only available for children with documented vaccination cards, missing vaccination dates were common. Rather than excluding these children, missing vaccination times (defined as the number of days from birth to vaccination) were imputed using multiple imputation, allowing children without vaccination cards to contribute to the analysis. Details of the imputation procedure are provided in Section 2.8.
+## Exposure variables
 
-## Exposure variable
+The data on daily mean 2-metre air temperature and mean 2-metre dewpoint temperature from ERA5 were used to derive heatwave and heat index exposure variables. The ERA5 temperature data were spatially linked to the 2024 Nigeria DHS clusters using the geographic coordinates provided in the survey. Following DHS recommendations for incorporating spatial covariates while accounting for the random displacement of cluster coordinates \[xxx\] (The DHS applies random displacement to cluster coordinates to protect confidentiality, with displacement distances of up to 2 km for urban clusters, 5 km for 99% of rural clusters, and 10 km for 1% of rural clusters). In this study, cluster locations were matched to ERA5 grid cells using a 10-kilometre buffer radius. Given that the ERA5 spatial resolution is approximately 0.25° (approximately 27 km), which is substantially larger than the maximum DHS displacement distance, coordinate displacement would be expected to have limited influence on the assigned temperature exposure. Therefore, the spatial linkage would generally correspond to assigning each DHS cluster the temperature series from the ERA5 grid cell containing its displaced centroid. Following this spatial linkage, all subsequent analyses were conducted using temperature time series corresponding to each DHS cluster location.
 
-There is in general no consensus as to the definition of a heatwave, and different countries, and studies adopt different definitions on what a heatwave is[@russo2019; @vanoldenborgh2022; @hundessa2025; @guidelin]. A similarity across many definitions involves an aspect of duration, and intensity such as "a period of marked and unusually hot weather persisting for at least two consecutive days"[@guidelin] with common definitions being: a period of at least n (say 3 or 5) consecutive days where the temperature exceeds the local $x^{th}-$percentile (Say 90% or 95%). In this study, we adopt a definition and classificatin of heatwaves following the framework of probabilistic extreme event attribution[@philip2020; @clarke2025; @vanoldenborgh2022], where we utilize a 5-day duration, and a 90%-tile threshold.
+### Heatwave exposure variable
 
-Daily mean 2-metre air temperature from ERA5 was used to derive heatwave exposure. The analysis was performed separately for each ERA5 grid cell covering Nigeria. To capture sustained periods of unusually high temperature and account for the accumulating effect of heat, a five-day rolling mean of daily temperature (Tx5x index) was calculated for every grid cell over the period January 1940 to May 2024. The resulting time series was divided into a baseline period (January 1940–December 2020) and an analysis period (January 2021–May 2024). The baseline period was used to estimate location-specific extreme temperature thresholds, while the analysis period was used to identify heatwave events during the period covered by the NDHS.
+Heatwaves were defined following the probabilistic extreme event attribution framework [@philip2020; @clarke2025; @vanoldenborgh2022]. Specifically, a heatwave was defined as a 5-day rolling average temperature exceeding the estimated local 75th percentile derived from a fitted GEV model.
 
-For each grid cell, the annual maximum of the Tx5x index was extracted from each year of the baseline period, yielding 81 annual maxima. These annual maxima were modelled using a non-stationary Generalized Extreme Value (GEV) distribution in which the location parameter varied linearly with calendar year to account for long-term warming trends[@philip2020]:
+To capture sustained periods of unusually high temperatures and account for the cumulative effects of heat exposure, a five-day rolling mean of daily 2-metre air temperature (Tx5x index) was calculated for each DHS cluster location for the period January 1940 to May 2024. The resulting temperature time series was divided into a baseline period (January 1940–December 2019) and an analysis period (January 2020–May 2024). The baseline period was used to estimate cluster-specific extreme temperature thresholds, while the analysis period was used to identify heatwave events occurring during the period covered by the NDHS. For each DHS cluster, the annual maximum of the Tx5x index was extracted from each year of the baseline period, yielding 80 annual maxima. These annual maxima were modelled using a non-stationary Generalized Extreme Value (GEV) distribution in which the location parameter varied linearly with the Global Mean Surface Temperatures (GMST) to account for long-term warming trends[@philip2020; @vanoldenborgh2022]:
 
-$$M_{t,x} \sim GEV(\mu, \sigma, \zeta)$$ $$\mu=\beta_0+\beta_1\cdot t$$ where $M_{t,x}$ denotes the annual maximum Tx5x value at grid cell $x$ in year $t$. The model was fitted using the `gamlss` and `gamlssx` packages in R[@r.a.rigby2005; @northrop2025].
+$$M_{t,x} \sim GEV(\mu, \sigma, \zeta)$$ $$\mu=\beta_0+\beta_1\cdot GMST$$ where $M_{t,x}$ denotes the annual maximum Tx5x value at cluster $x$ in year $t$, and $GMST$ denotes the Global Mean Surface Temperature in year $t$. The model was fitted using the `gamlss` and `gamlssx` packages in R[@r.a.rigby2005; @northrop2025].
 
-The fitted GEV models were subsequently used to estimate $Z_T$, the 10-year return level for each grid cell. This return level represents the temperature expected to be exceeded, on average, once every ten years under the fitted non-stationary climate model. If $F(\cdot)$ denotes the fitted GEV cumulative distribution function[@rigby2019]:
+The fitted GEV models were subsequently used to estimate $Z_4$, the 4-year return level for each DHS cluster, representing the temperature expected to be exceeded, on average, once every four years under the fitted non-stationary climate model. If $F(\cdot)$ denotes the fitted GEV cumulative distribution function[@rigby2019]:
 
 $$F(x)=exp(-[1+\zeta(\frac{x-\mu}{\sigma})]^{-1/\zeta}_+)$$ Then, the $T$-year return level satisfies
 
 $$P(M_{t,x}>Z_T)=\frac{1}{T}; \\F(Z_T)=1-\frac{1}{T}$$
 
-For a 10-year return level, $F(Z_{10})=1-1/10=0.9$ and hence $Z_{10}=F^{-1}(0.9)$ which is given by:
+For a 4-year return level, $F(Z_{4})=1-1/4=0.75$ and hence $Z_{4}=F^{-1}(0.75)$ which is given by:
 
-$$Z_{10}=\mu+\frac{\sigma}{\zeta}[(-\log_e(0.9))^{-\zeta}-1], \zeta\neq0$$
+$$Z_{4}=\mu+\frac{\sigma}{\zeta}[(-\log_e(0.75))^{-\zeta}-1], \zeta\neq0$$
 
-Each Tx5x observation during the analysis period (January 2021–May 2024) was then compared with the corresponding grid-cell-specific return level. Days for which the Tx5x index exceeded the return level $(Z_{10})$ were classified as heatwave days, whereas all remaining days were classified as non-heatwave days. This produced a daily binary heatwave indicator for every ERA5 grid cell across Nigeria.
+Each Tx5x observation during the analysis period (January 2020–May 2024) was then compared with the corresponding DHS cluster-specific return level. Days for which the Tx5x index exceeded the return level $(Z_{4})$ were classified as heatwave days, whereas all remaining days were classified as non-heatwave days. This produced a daily binary heatwave indicator for every DHS cluster and each observation was classified as heatwave-exposed if at least one heatwave day occurred within a 15-day exposure window centered on the scheduled vaccination date (7 days before to 7 days after).
 
-The DHS clusters were subsequently linked to the ERA5 heatwave data using their geographical coordinates and calendar date. Spatial linkage followed DHS recommendations for incorporating categorical spatial covariates by accounting for the dispacement distance. Because the ERA5 grid resolution (\~0.25°, approximately 27 km) is substantially larger than the maximum DHS displacement distance (2km for urban clusters, 5km for 99% of rural clusters, 10km for 1% of rural clusters), each survey cluster was assigned the heatwave status of the ERA5 grid cell containing its displaced centroid. Finally, each observation was classified as heatwave-exposed if at least one heatwave day occurred within a 15-day exposure window centered on the scheduled vaccination date (7 days before to 7 days after).
+### Heat Index exposure variable
 
-## Covariates
+The heat index was computed using the 2-metre air temperature and the 2-metre dewpoint temperature. The `weathermetrics` package [@anderson2013] was then used in the computation of the heat index using the heat Index calculation algorithm of the U.S. National Weather Service (NWS) [@nationalweatherservice2011]
 
-In this study, the covariates utilized were informed by a recent systematic review of factors associated with vaccine timeliness in low- and middle-income countries over 10 years (2007-2017)[@masters2019], and availability of the covariates in the DHS data. The covariates are shown in \[xxx\]:
+The heat index was categorized according to NWS guidelines as shown:
 
-```{r, t1}
+```{r}
 #| echo: false
 #| message: false
 #| warning: false
+
+pacman::p_load(kableExtra, knitr)
+
+data.frame(
+  Classification = c("Tolerable", "Caution", "Extreme Caution", "Danger", "Extreme Danger"),
+  `Heat Index (°C)` = c("<26.7°C", "26.7°C–32.2°C", "32.2°C–39.4°C", "39.4°C–51.1°C", "≥51.7°C"),
+  check.names = FALSE
+) |>
+  kbl(booktabs = TRUE, align = "lc", escape = FALSE) |>
+  kable_styling(full_width = FALSE, latex_options = "hold_position") |>
+  row_spec(0, bold = TRUE)
+```
+
+## Covariates
+
+In this study, the covariates utilized were informed by a recent systematic review of factors associated with vaccine timeliness in low- and middle-income countries over 10 years (2007-2017)[@masters2019], and availability of the covariates in the DHS data. These comprised child, maternal, household and geographical characteristics that have previously been associated with vaccination timeliness. Continuous variables were categorized where appropriate to improve interpretability and to ensure consistency with standard DHS reporting. Maternal age at the child's birth was grouped into seven five-year age categories, while heat index was classified according to the United States National Weather Service heat index categories into Normal, Caution, Extreme Caution, Danger and Extreme Danger. Place of residence, place of delivery, child's sex, maternal education, household wealth index, perceived travel time to the nearest health facility, and geographical zone were analysed using the standard DHS classifications. Birth order was retained as a continuous variable. The covariates included in the analysis and their corresponding types are presented in Table 3.1.
+
+```{r, t1}
+#| tbl-pos: "H"
+#| echo: false
+#| message: false
+#| warning: false
+
 library(kableExtra)
 library(knitr)
 
 data.frame(
   `Variable` = c(
     'Gender', 'Delivery', 'Birth order', 
-    'Education', 'Age-at-birth', 'ANC',
+    'Education', 'Age-at-birth', 'Geozone',
     'DHF', 'Residence', 'Wealth'
     ), 
   `Description` = c(
     "The child's gender", "The place of delivery categorized as either institutional or home delivery", 
-    "The child's birth order", "The highest level of education attained by the mother",
-    "The age of the mother at birth", "The number of antenatal care visits attended by the mother", 
-    "The distance to the nearest health facility", "The residence, categorized as rural or urban",
-    "The household wealth index categorized into 5 quintiles"
+    "The child's birth order", "The highest level of education attained by the mother. Categories include: No education, primary, secondary and higher education.",
+    "The age of the mother at birth", "Geopolitical zone. Nigeria is divided into six of these zones: North-West, North-East, North-Central (Middle Belt), South-West, South-East, and South-South", 
+    "The distance to the nearest health facility in minutes", "The residence, categorized as rural or urban",
+    "The household wealth index categorized into 5 quintiles (poorest, poorer, middle, richer, richest"
   ),
   `Type` = c(
-    "Binary", "Binary", "Integer", "Categorical", "Continuous", "Continuous", "Continuous",
+    "Binary", "Binary", "Integer", "Categorical", "Categorical", "Categorical", "Categorical",
     "Binary", "Categorical"
   )
 ) |>
@@ -86,6 +109,7 @@ data.frame(
     align = c("l", "p{9cm}", "c"),
     linesep = ""
   ) |>
+  kable_styling(latex_options = "hold_position") |>
   # kable_styling(
   #   latex_options = c("hold_position", "striped"),
   #   font_size = 10,
@@ -99,22 +123,45 @@ data.frame(
 
 ```
 
-## Sensitivity analysis
-
-We assessed the sensitivity of the final results to modelling choices namely: the heatwave classification model and the return level specified for the heatwave classification model. An alternative heatwave classification model, the Generalized Pareto Distribution was used to classify heatwaves using a methodology termed "Peaks-Over-Threshold" (POT). In this, instead of modelling annual maxima, such as in the GEV model, we model the extreme temperatures above a given threshold such as the 95% percentile, and use the model to classify whether future occuring events were heatwaves or not. Specifically, ...
-
-Further, we also assessed the sensitivity of the results, to the imputation scheme, by running a complete case analysis, to assess the extent to which the results are sensitive to the imputation.
-
-gev stuff again, (return level: 15 year, 5 year) gpd stuff with 95%, 90% 99%
-
 ## Statistical analysis
 
-For any given antigen, we construct the appropriate dataset by only including children who have attained the antigen time of vaccination, and for a child $i$, we let $Y_i$ represent the binary outcome variable for vaccine delay, which we code as 1 if the child has the vaccine delay, and 0 if not, $Z_i$ represent the matrix of selected covariates, including the intercept, and $X_i$ represent the binary exposure variable (heatwave), the model is given as follows:
+The primary outcome of interest was the age at vaccination, measured as the number of days from birth until receipt of the vaccine under consideration. For a specific antigen, let $T_i$ denote the age at vaccination for child $i$. Since vaccination status differed across children at the time of interview, three forms of observations were present. For children whose vaccination date was recorded on the vaccination card, the event time $T_i$ was observed exactly. For children whose mothers reported that the child had received the vaccine but the exact vaccination date was unavailable (typically because no vaccination card was available), the event time was interval censored such that, if $L_i$ denotes the recommended age for the vaccine (Table 1.1) and $U_i$ denotes the child's age at interview, then the true vaccination time satisfies $L_i < T_i \le U_i$. Children who had not received the vaccine by the interview date were treated as right censored, such that $T_i > U_i$. The age at vaccination was modelled using a parametric accelerated failure time (AFT) model assuming a Weibull distribution:
 
-$$Y_t \sim Bernoulli(\pi_i)$$ $$\log(\frac{p_i}{1-p_i})=Z_i\cdot\beta+X_i\cdot\gamma$$
+$$T_i \sim \text{Weibull}(\lambda_i,\kappa),$$
 
-We adjust for the survey's complex sampling scheme using the sampling weights in the model.
+where $\kappa$ denotes the Weibull shape parameter and $\lambda_i$ is the individual-specific scale parameter. The AFT model assumes a log-linear relationship between the expected survival time and the explanatory variables,
+
+$$\log(\lambda_i)=\beta_0+\beta_1H_i+\mathbf{X}_i^\top\boldsymbol{\gamma},$$
+
+where $\beta_0$ is the intercept, $H_i$ is the binary heatwave exposure indicator (1 = exposed, 0 = not exposed), $\mathbf{X}_i$ is the vector of adjustment covariates, and $\boldsymbol{\gamma}$ is the corresponding vector of regression coefficients.
+
+To investigate whether the severity of heat exposure influenced vaccination timing, a second model replaced the binary heatwave indicator with the categorical heat index exposure variable,
+
+$$\log(\lambda_i)
+=
+\beta_0
++
+\sum_{k=2}^{K}\beta_kI(HI_i=k)
++
+\mathbf{X}_i^\top\boldsymbol{\gamma},$$
+
+where $HI_i$ denotes the heat index category for child $i$, $I(HI_i=k)$ is an indicator function for the $k^{\text{th}}$ heat index category, and the lowest heat category served as the reference level.
+
+Parameter estimation was performed by maximum likelihood. For an individual child, the likelihood contribution depended on the censoring mechanism. Let $f(\cdot)$, $F(\cdot)$ and $S(\cdot)=1-F(\cdot)$ denote the Weibull probability density, cumulative distribution and survival functions, respectively. The individual likelihood contribution was constructed as follows:
+
+$$L_i(\boldsymbol{\theta})=
+\begin{cases}
+f(T_i), & \text{if the vaccination date was observed},\\
+F(U_i)-F(L_i), & \text{if the vaccination time was interval censored},\\
+S(U_i), & \text{if the child was right censored}.
+\end{cases}$$
+
+The full likelihood was then obtained by taking the product of the individual likelihood contributions,
+
+$$L(\boldsymbol{\theta})=\prod_{i=1}^{n}L_i(\boldsymbol{\theta}),$$
+
+where $\boldsymbol{\theta}$ denotes the vector of Weibull and regression parameters. Maximum likelihood estimates were obtained using the `svysurv()` function from the `survival` package in R, which fits Weibull accelerated failure time models while accommodating exact, interval-censored and right-censored observations within a unified likelihood framework that handles the multi-stage sampling design and sampling weights. Regression coefficients from the AFT model were exponentiated and interpreted as event time ratios. An event time ratio greater than one indicates a longer expected time to vaccination (greater delay), whereas an event time ratio less than one indicates a shorter expected time to vaccination (earlier vaccination), after adjusting for the selected covariates.
 
 ### Statistical software
 
-All analyses were conducted using R version 4.5.1[@rcoreteam2025]. Data wrangling, manipulation and visualization were performed using the `tidyverse` suite of packages[@wickham2019]. Data retrieval and management were carried out using `ecmwfr`[@hufkens2019a], `haven`[@wickham2025], and `terra`[@hijmans2026], while spatial processing and analysis were performed using the `terra` and `sf` packages[@hijmans2026; @pebesma2023]. Extreme value modelling was undertaken using `gamlss` and `gamlssx`[@northrop2025a; @r.a.rigby2005a], and Bayesian regression modelling, model diagnostics and posterior summarization were conducted using `brms`, `tidybayes`, and `bayesplot` interfaced with the Stan probabilistic programming language[@gabry2025; @kay2024; @bürkner2017]. Missing data were explored and handled using the `naniar` and `mice` packages[@buuren2011; @tierney2023]. Reproducible reports and tables were generated using `rmarkdown` and `kableExtra`[@allaire2026; @zhu2024].
+All analyses were conducted using R version 4.5.1[@rcoreteam2025]. Data wrangling, manipulation and visualization were performed using the `tidyverse` suite of packages[@wickham2019]. Data retrieval and management were carried out using `ecmwfr`[@hufkens2019a], `haven`[@wickham2025], and `terra`[@hijmans2026], while spatial processing and analysis were performed using the `terra` and `sf` packages[@hijmans2026; @pebesma2023]. Extreme value modelling was undertaken using `gamlss` and `gamlssx`[@northrop2025a; @r.a.rigby2005a], computation of the heat index was done using the `weathermetrics` package[@anderson2013] and model fitting was conducted using the `survey` [@lumley2004; @lumley2010] package. Reproducible reports and tables were generated using `rmarkdown` and `kableExtra`[@allaire2026; @zhu2024].
