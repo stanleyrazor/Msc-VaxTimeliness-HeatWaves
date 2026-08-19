@@ -192,9 +192,8 @@ for(i in seq_along(yrs)){
       plot.title = element_text(face = "bold", hjust = 0.5)
     )
 
-  ## optionally save
   ggsave(
-    paste0("output/img/heatmaps/", yrs[i], ".png"),
+    paste0("output/img/heatmaps/heat wave/", yrs[i], ".png"),
     p,
     width = 12,
     height = 9,
@@ -254,7 +253,7 @@ p <- ggplot(admin2_res) +
     labels = c("Southern\nNigeria", "Northern\nNigeria"),
     expand = expansion(add = 0)
   ) +
-  labs(x = NULL, title = 'The 5-day rolling average temperature') +
+  labs(x = NULL, title = NULL) + # title = 'The 5-day rolling average temperature'
   theme_bw(base_family = "Times New Roman") +
   theme(
     axis.title.y = element_blank(),
@@ -328,7 +327,7 @@ p <- ggplot(admin2_res) +
   labs(
     x = NULL,
     y = NULL,
-    title = "Temperature thresholds for a 1-in-5 year event"
+    title = NULL #"Temperature thresholds for a 1-in-4 year event"
   ) +
   theme_bw(base_family = "Times New Roman") +
   theme(
@@ -347,7 +346,7 @@ p <- ggplot(admin2_res) +
   )
 
 ggsave(
-  paste0("output/img/heatmaps/", "temp-thresh-5.png"),
+  paste0("output/img/heatmaps/heat wave/", "temp-thresh-4.png"),
   p,
   width = 12,
   height = 4,
@@ -367,7 +366,7 @@ p <- ggplot(admin2_res |> select(lat, thresh, year) |> distinct(),
   labs(
     x = "",
     y = 'Threshold (degree celsius)',
-    title = "Temperature thresholds for a 1-in-5 year event"
+    title = NULL # "Temperature thresholds for a 1-in-4 year event"
   ) +
   theme_bw(base_family = 'Times New Roman') +
   theme(
@@ -376,7 +375,7 @@ p <- ggplot(admin2_res |> select(lat, thresh, year) |> distinct(),
   )
 
 ggsave(
-  paste0("output/img/heatmaps/", "temp-thresh-5(2).png"),
+  paste0("output/img/heatmaps/heat wave/", "temp-thresh-4(2).png"),
   p,
   width = 12,
   height = 5,
@@ -411,7 +410,7 @@ p <- ggplot(admin2_res) +
     labels = c("Southern\nNigeria", "Northern\nNigeria"),
     expand = expansion(add = 0)
   ) +
-  labs(x = NULL, title = 'The daily heatwave classification',
+  labs(x = NULL, title = NULL, #'The daily heatwave classification',
        fill = NULL) +
   theme_bw(base_family = "Times New Roman") +
   theme(
@@ -429,7 +428,7 @@ p <- ggplot(admin2_res) +
   )
 
 ggsave(
-  paste0("output/img/heatmaps/", "heatwave-classification.png"),
+  paste0("output/img/heatmaps/heat wave/", "heatwave-classification.png"),
   p,
   width = 12,
   height = 9,
@@ -478,7 +477,7 @@ p <- ggplot(tmp) +
     drop = FALSE,
     name = "Number of\nheatwave days"
   ) +
-  labs(x = NULL, title = 'The daily heatwave classification',
+  labs(x = NULL, title = NULL, #'The daily heatwave classification',
        fill = NULL) +
   scale_y_discrete(expand = c(0, 0)) +
   theme_bw(base_family = "Times New Roman") +
@@ -497,14 +496,238 @@ p <- ggplot(tmp) +
   )
 
 ggsave(
-  paste0("output/img/heatmaps/", "heatwave-classification(agg).png"),
+  paste0("output/img/heatmaps/heat wave/", "heatwave-classification(agg).png"),
   p,
   width = 12,
   height = 9,
   dpi = 1000
 )
 
-# Data exploration --------------------------------------------------------
+# plotting map of num days heatwave exposed
+cds_geoloc <- arrow::read_parquet('data/processed/cluster-processed.parquet')
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
+setDT(cds_geoloc)
+
+clusterloc <- merge(g1,
+                    cds_geoloc |>
+                      group_by(year, cluster) |>
+                      reframe(heatwave = sum(heatwave))
+                    , by = 'cluster', all = T) |>
+  mutate(
+    class = case_when(
+      heatwave == 0                ~ "0",
+      heatwave >= 1 & heatwave <= 4 ~ "1-4",
+      heatwave >= 5 & heatwave <= 9 ~ "5-9",
+      heatwave >= 10 & heatwave <= 14 ~ "10-14",
+      heatwave >= 15 & heatwave <= 19 ~ "15-19",
+      heatwave >= 20               ~ ">=20",
+      TRUE                         ~ NA_character_ # Safely handles any unexpected NAs
+    ),
+    # Convert to an ordered factor so R knows the correct sequence
+    class = factor(
+      class,
+      levels = c("0", "1-4", "5-9", "10-14", "15-19", ">=20"),
+      ordered = TRUE
+    )
+  )
+
+cols <- c(
+  "0"   = "black",
+  setNames(
+    viridis(6, option = "D", begin = 0.15, end = 1),
+    c("0", "1-4", "5-9", "10-14", "15-19", ">=20"))
+)
+
+p <- ggplot() +
+  geom_sf(data = shp,
+          colour = "grey70",
+          fill = NA,
+          linewidth = 0.1) +
+  geom_sf(data = clusterloc,
+          aes(colour = class,
+              size = class)) +
+  facet_wrap(~year, nrow = 2) +
+  scale_size_manual(
+    values = c(
+      "0" = .3,
+      "1-4" = 2,
+      "5-9" = 2,
+      "10-14" = 2,
+      "15-19" = 2,
+      ">=20" = 2
+    ),
+    guide = "none"
+  ) +
+  scale_colour_manual(
+    values = cols,
+    drop = FALSE,
+    name = "Heatwave frequency\n(days)"
+  ) +
+  theme_void(base_family = "Times New Roman") +
+  theme(
+    plot.margin = margin(t = 0, r = 5.5, b = 0, l = 5.5, unit = "pt"),
+
+    legend.position = "right",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+  # coord_sf(expand = FALSE)
+
+ggsave(
+  paste0("output/img/heatmaps/heat wave/heatwave-map.png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+
+
+
+# Heat index exploration --------------------------------------------------
+
+# shapefile
+admin2_res <- bind_cols(
+  data.frame(st_centroid(g1) |> st_coordinates()),
+  cluster = g1$cluster
+) |>
+  setNames(c('lon', 'lat', 'cluster')) |>
+  merge(hi_data |>
+          mutate(
+            heatclass = case_when(
+              heatindex < 26.67                       ~ "Tolerable",
+              heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
+              heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
+              heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+              heatindex >= 51.67                      ~ "Extreme Danger",
+              TRUE                                    ~ NA_character_
+            ),
+            heatclass = factor(
+              heatclass,
+              levels = c("Tolerable", "Caution", "Extreme Caution",
+                         "Danger", "Extreme Danger"
+              ),
+              labels = c("Tolerable", "Caution", "Extreme Caution",
+                         "Danger", "Extreme Danger"
+              ),
+              ordered = T
+            )
+          ),
+        by = 'cluster', all = T)
+
+admin2_res <- admin2_res |>
+  mutate(
+    cluster = factor(cluster,
+                   levels = admin2_res |> distinct(cluster, lat) |> arrange(lat) |> pull(cluster)
+    )
+  )
+
+# heatindex plot
+mu <- mean(admin2_res$heatindex)
+p <- ggplot(admin2_res) +
+  geom_tile(aes(x = date, y = cluster, fill = heatindex)) +
+  scale_fill_gradient2(
+    low = "#1a9850",
+    mid = "white",
+    high = "#d73027",
+    midpoint = mu,
+    breaks = seq(15, 37.5, length.out = 10),
+    guide = guide_coloursteps(
+      show.limits = TRUE,
+      even.steps = TRUE
+    ),
+    name = expression(Heat-Index~"("*degree*C*")")
+  ) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y",
+    expand = c(0, 0)
+  ) +
+  scale_y_discrete(
+    breaks = levels(admin2_res$cluster)[c(1, length(levels(admin2_res$cluster)))],
+    labels = c("Southern\nNigeria", "Northern\nNigeria"),
+    expand = expansion(add = 0)
+  ) +
+  labs(x = NULL, title = 'The Heat Index') +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    axis.title.y = element_blank(),
+    # axis.text.y = element_blank(),
+    # axis.ticks.y = element_blank(),
+    # axis.line.y = element_blank(),
+
+    legend.key.height = unit(1.4, "cm"),
+    legend.key.width = unit(0.8, "cm"),
+
+    axis.text.x = element_text(size = 10, colour = "black"),
+    axis.ticks.x = element_line(colour = "black"),
+    axis.line.x = element_line(colour = "black"),
+
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "heat-index-num.png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+
+# heat index classification
+p <- ggplot(admin2_res) +
+  geom_tile(aes(x = date, y = cluster, fill = heatclass)) +
+  # Swapped continuous gradient for explicit NWS categorical palette
+  scale_fill_manual(
+    values = c(
+      "Tolerable"       = "#a6d96a",  # Soft NWS Light Green
+      "Caution"         = "#ffff00",  # NWS Yellow
+      "Extreme Caution" = "#ffaa00",  # NWS Amber / Dark Yellow
+      "Danger"          = "#ff6600",  # NWS Orange
+      "Extreme Danger"  = "#cc0000"   # NWS Red
+    ),
+    name = "Heat Index\nCategory",
+    drop = FALSE # Keeps all levels in the legend even if missing in data subset
+  ) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y",
+    expand = c(0, 0)
+  ) +
+  scale_y_discrete(
+    breaks = levels(admin2_res$cluster)[c(1, length(levels(admin2_res$cluster)))],
+    labels = c("Southern\nNigeria", "Northern\nNigeria"),
+    expand = expansion(add = 0)
+  ) +
+  labs(x = NULL, title = NULL) +
+  theme_bw(base_family = "Times New Roman") +
+  theme(
+    axis.title.y = element_blank(),
+
+    # Updated legend adjustments for discrete blocks
+    legend.key.height = unit(0.8, "cm"),
+    legend.key.width = unit(0.8, "cm"),
+
+    axis.text.x = element_text(size = 10, colour = "black"),
+    axis.ticks.x = element_line(colour = "black"),
+    axis.line.x = element_line(colour = "black"),
+
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+ggsave(
+  paste0("output/img/heatmaps/", "heat-index-class.png"),
+  p,
+  width = 12,
+  height = 9,
+  dpi = 1000
+)
+
+
+# Kaplan meier analysis ---------------------------------------------------
 
 vax_data <- ldata[['mcv1']]; setDT(vax_data)
 vax_used_folder <- 'output/img/mcv1/'
@@ -920,7 +1143,7 @@ for (i in 1:length(antigen)) {
       event_time, outcome_event, censor_time,
 
       heatindex = case_when(
-        heatindex < 26.67                       ~ "Normal",
+        heatindex < 26.67                       ~ "Tolerable",
         heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
         heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
         # heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
@@ -929,10 +1152,10 @@ for (i in 1:length(antigen)) {
       ),
       heatindex = factor(
         heatindex,
-        levels = c("Normal", "Caution", "Extreme Caution"
+        levels = c("Tolerable", "Caution", "Extreme Caution"
                    # "Danger", "Extreme Danger"
         ),
-        labels = c("Normal", "Caution", "Extreme Caution"
+        labels = c("Tolerable", "Caution", "Extreme Caution"
                    # "Danger", "Extreme Danger"
         )
       ),
@@ -1064,10 +1287,10 @@ for (i in 1:length(antigen)) {
   # table(model_data$time_start[model_data$time_start < 0]);summary(model_data$time_end);summary(model_data$time_start)
 
   # BCG checks to modify time points for people receiving vax before b.day
-  if (antigen[i] == 'bcg') {
+  {if (antigen[i] == 'bcg') {
     model_data$time_start <- ifelse(model_data$time_start <= 0, 1, model_data$time_start)
     model_data$time_end <- ifelse(model_data$time_end <= 0, 1, model_data$time_end)
-  }
+  }}
 
   # fit <- survreg(
   #   Surv(time_start, time_end, status, type = "interval") ~
@@ -1122,6 +1345,9 @@ for (i in 1:length(antigen)) {
     design = surv_design,
     data = mstd
   )
+
+  saveRDS(list(fit_hw = fit_hw, fit_hi = fit_hi),
+          paste0('output/models/', antigen[i], '-file.rds'))
 
   result <- autoReg(fit_hw, uni = F)
   flextable::save_as_image(

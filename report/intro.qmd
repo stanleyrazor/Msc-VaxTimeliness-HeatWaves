@@ -12,7 +12,7 @@ Nigeria has experienced several notable heatwave events in recent decades, inclu
 
 ------------------------------------------------------------------------
 
-Nigeria's National Programme on Immunization (NPI) was established in 1978 to provide routine immunization services for children. Over the years, the programme has expanded to include additional vaccine antigens in line with the country's Expanded Programme on Immunization (EPI). According to the current national immunization schedule (Table 1.1), a child is considered fully immunized upon receiving one dose of Bacillus Calmette–Guérin (BCG), the hepatitis B birth dose, four doses of oral polio vaccine (OPV), two doses of inactivated polio vaccine (IPV), three doses each of the pentavalent, pneumococcal conjugate (PCV) and rotavirus vaccines, two doses of measles-containing vaccine (MCV), and one dose each of the yellow fever and meningitis vaccines \[@ndhs\].
+Nigeria's National Programme on Immunization (NPI) was established in 1978 to provide routine immunization services for children. Over the years, the programme has expanded to include additional vaccine antigens in line with the country's Expanded Programme on Immunization (EPI). According to the current national immunization schedule (Table 1.1), a child is considered fully immunized upon receiving one dose of Bacillus Calmette–Guérin (BCG), the hepatitis B birth dose, four doses of oral polio vaccine (OPV), two doses of inactivated polio vaccine (IPV), three doses each of the pentavalent, pneumococcal conjugate (PCV) and rotavirus vaccines, two doses of measles-containing vaccine (MCV), and one dose each of the yellow fever and meningitis vaccines [@ndhs].
 
 ::: {tbl-t1}
 ```{r tbl-meth}
@@ -102,8 +102,8 @@ The aim of this study is to examine the association between heatwave exposure an
 
 The specific objectives are as follows:
 
-1.  Estimate the spatial and temporal distribution of heatwave occurrence across Nigeria during 2021–2024.
+1.  Estimate the spatial and temporal distribution of heat exposure occurrence across Nigeria during 2020–2024.
 
-2.  Estimate the timeliness of the BCG, Pentavalent 1–3 and MCV1 vaccination.
+2.  Estimate the timeliness of the BCG, Pentavalent 1–3, Vitamin A and MCV1 vaccination.
 
-3.  Assess the association of heatwaves and vaccine timeliness while adjusting for selected socioeconomic and demographic characteristics.
+3.  Assess the association of heat exposure and vaccine timeliness while adjusting for selected socioeconomic and demographic characteristics.

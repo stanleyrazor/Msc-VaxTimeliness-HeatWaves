@@ -1,26 +1,104 @@
 # Results
 
-## Study population
-
-The 2024 Nigeria Demographic and Health Survey (NDHS) included a total of 104,557 children. After restricting the sample to children born within the three years preceding the survey, 15,993 children remained. Further restricting the sample to children who were alive at the time of the survey resulted in a final sample of 14,916 children. The number of children eligible for analysis for each antigen, based on the recommended vaccination schedule from the National Programme on Immunization (NPI), is presented in Table 4.1 together with unweighted statistics across selected covariates. The number of children eligible for antigen-specific analysis decreased progressively across the vaccination schedule, from 14,896 children eligible for BCG at birth to 10,837 children eligible for MCV1 at 9 months. 
-
-The distribution of the characteristics was similar across the antigen-specific datasets. Approximately 79% of children had a reported travel time of less than 30 minutes to the nearest health facility across all antigens. The distribution of children across wealth index categories was relatively uniform, although the largest proportions were in the poorest (25%) and poorer (20%) quintiles, while smaller proportions were observed in the richer (19%) and richest (17%) quintiles. Maternal age at birth was concentrated among mothers aged 20–34 years. The North West geopolitical zone accounted for the largest proportion of children across the antigen-specific datasets. The number of children residing in rural areas was higher than that of children residing in urban areas. Home deliveries consistently accounted for 53% of deliveries across the antigen-specific datasets, compared with deliveries occurring at health facilities. The distribution of children by sex was balanced, with approximately 50% being female and 50% male across all antigen-specific datasets.
-
-
 ```{r}
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "Study population characteristics across antigen datasets"
 
-pacman::p_load(gtsummary, dplyr)
+pacman::p_load(gtsummary, dplyr, knitr, kableExtra, tidyr, data.table)
 
 # data
 antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'vita1', 'mcv1')
 usenames <- c('BCG', 'Pentavalent 1', 'Pentavalent 2', 'Pentavalent 3', 'Vitamin A', 'MCV1')
 
+# ldata - vax-data | cdata - covariates
 ldata <- readRDS('../data/processed/vaxdata-components.rds')
 cdata <- readRDS('../data/processed/dhs-covariates.rds')
+
+# processed temperature data - at pixel level (buffered)
+cds_geoloc <- arrow::read_parquet('../data/processed/cluster-processed.parquet')
+cds_geoloc <- cds_geoloc |> mutate(cluster = as.character(cluster))
+cds_geoloc$heatwave <- cds_geoloc$p >= .75
+setDT(cds_geoloc); setkey(cds_geoloc, cluster, date)
+
+
+# processed data on the heat index
+hi_data <- arrow::read_parquet('../data/processed/heatindex-processed.parquet') |>
+  mutate(cluster = as.character(cluster))
+setDT(hi_data)
+
+use_ldata <- ldata[antigen];
+
+for (i in 1:length(use_ldata)) use_ldata[[i]] <- use_ldata[[i]] |> mutate(antigen = usenames[i])
+
+vax_data <- bind_rows(use_ldata)
+use_window_min <- ifelse(vax_data$antigen == 'BCG', 0, 7)
+setDT(vax_data)
+
+# the 7-daywindow bound
+vax_data[, `:=`(
+  start_dt = due_date - use_window_min,
+  end_dt   = due_date + 7,
+  cluster  = as.character(cluster)
+)]
+
+heatwave <- cds_geoloc[vax_data, on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                      .(heatwave_sum = sum(heatwave, na.rm = TRUE)),
+                      by = .EACHI] |>
+  setNames(c('cluster', 'start_dt', 'end_dt', 'heatwave')) |>
+  distinct()
+heatindex <- hi_data[vax_data,
+                     on = .(cluster = cluster, date >= start_dt, date <= end_dt),
+                     .(heatindex = mean(heatindex, na.rm = TRUE)),
+                     by = .EACHI] |>
+  setnames(c('cluster', 'start_dt', 'end_dt', 'heatindex')) |>
+  unique()
+
+# merging to have the heatwave and temperature variable
+vax_data <- merge(
+  vax_data, heatwave,
+  by = c('cluster', 'start_dt', 'end_dt'),
+  all.x = T
+) |>
+  merge(heatindex, by = c('cluster', 'start_dt', 'end_dt'), all.x = T) |>
+  mutate(
+    heatwave = ifelse(heatwave == 0, 'absent', 'present'),
+
+    heatclass = case_when(
+      heatindex < 26.67                       ~ "Tolerable",
+      heatindex >= 26.67 & heatindex < 32.22  ~ "Caution",
+      heatindex >= 32.22 & heatindex < 39.44  ~ "Extreme Caution",
+      heatindex >= 39.44 & heatindex < 51.67  ~ "Danger",
+      heatindex >= 51.67                      ~ "Extreme Danger",
+      TRUE                                    ~ NA_character_
+    ),
+    heatclass = factor(
+      heatclass,
+      levels = c("Tolerable", "Caution", "Extreme Caution",
+                 "Danger", "Extreme Danger"
+      ),
+      labels = c("Tolerable", "Caution", "Extreme Caution",
+                 "Danger", "Extreme Danger"
+      ),
+      ordered = T
+    )
+    )
+
+```
+
+## Study population
+
+The 2024 Nigeria Demographic and Health Survey (NDHS) included a total of 104,557 children. After restricting the sample to children born within the three years preceding the survey, 15,993 children remained. Further restricting the sample to children who were alive at the time of the survey resulted in a final sample of 14,916 children. The number of children eligible for analysis for each antigen, based on the recommended vaccination schedule from the National Programme on Immunization (NPI), is presented in Table 4.1 together with unweighted statistics across selected covariates. The number of children eligible for antigen-specific analysis decreased progressively across the vaccination schedule, from 14,896 children eligible for BCG at birth to 10,837 children eligible for MCV1 at 9 months.
+
+The distribution of the characteristics was similar across the antigen-specific datasets. Approximately 79% of children had a reported travel time of less than 30 minutes to the nearest health facility across all antigens. The distribution of children across wealth index categories was relatively uniform, although the largest proportions were in the poorest (25%) and poorer (20%) quintiles, while smaller proportions were observed in the richer (19%) and richest (17%) quintiles. Maternal age at birth was concentrated among mothers aged 20–34 years. The North West geopolitical zone accounted for the largest proportion of children across the antigen-specific datasets. The number of children residing in rural areas was higher than that of children residing in urban areas. Home deliveries consistently accounted for 53% of deliveries across the antigen-specific datasets, compared with deliveries occurring at health facilities. The distribution of children by sex was balanced, with approximately 50% being female and 50% male across all antigen-specific datasets.
+
+```{r}
+#| tbl-pos: "H"
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Study population characteristics across antigen datasets"
+
 use_ldata <- ldata[antigen]
 
 for (i in 1:length(use_ldata)) use_ldata[[i]] <- use_ldata[[i]] |> mutate(antigen = usenames[i])
@@ -136,13 +214,170 @@ d2 |>
   kableExtra::kable_styling(latex_options = c("hold_position", "scale_down"))
 ```
 
-
 ## Heatwave exposure
+
+The spatial and temporal distribution of heatwave occurrence across DHS clusters from 2020 to 2024 is presented in Figure 4.1. The threshold used to classify a cluster-day as a heatwave varied spatially across Nigeria, ranging from approximately 25°C to 37°C, with the southern regions having lower threshold values compared to the northern regions. Spatial variation in the threshold was more pronounced than temporal variation across the study period. Overall, most clusters experienced no heatwave during each year, although the proportion varied substantially over time. In 2020, 63% of clusters experienced no heatwave, compared with 69% in 2021, 85% in 2022, and 100% in 2023. The proportion was lowest in 2024, when 53% of clusters experienced no heatwave.
+
+Among clusters that experienced at least one heatwave day, 507 clusters were affected in 2020, 429 in 2021, 207 in 2022, none in 2023, and 648 in 2024 out of a total 1,380 clusters in the NDHS 2024. In 2020, heatwave occurrence was concentrated primarily in southern Nigeria, with some occurrence in the north-eastern region. In 2021 and 2022, heatwaves were largely confined to southern Nigeria, while in 2024, heatwave occurrence extended across both southern and north-eastern Nigeria. The number of cluster-days classified as heatwave also varied across clusters and years. In 2020 and 2024, more than 20 clusters experienced between 15 and 19 heatwave cluster-days, while five clusters experienced more than 20 cluster-days classified as heatwave in 2024. (These counts represent the cumulative number of cluster-days classified as heatwave and do not imply that the heatwave days occurred consecutively).
+
+![](images/temp-thresh-4.png)
+
+![The spatial distribution of the cumulative number of heatwave (in days), faceted by year. Observations with 0 days of heatwaves (colored black) have been assigned a smaller size to avoid crowding the plot.](images/heatwave-map-03.png)
+
+```{r}
+#| tbl-pos: "H"
+#| echo: false
+#| message: false
+#| warning: false
+
+# Pre-processing: Generate data for Table 1 (Heatwave)
+tbl1_data <- vax_data |>
+    as_tibble() |> # Removes data.table/key grouping restrictions
+    count(heatwave, antigen) |>
+    group_by(antigen) |>
+    mutate(
+        pct = (n / sum(n)) * 100,
+        # Format as "Count (Percentage%)"
+        cell_value = sprintf("%s (%.1f%%)", format(n, big.mark = ","), pct)
+    ) |>
+    ungroup() |>
+    select(heatwave, antigen, cell_value) |>
+    pivot_wider(names_from = antigen, values_from = cell_value, values_fill = "0 (0.0%)")
+
+### Render kableExtra Tables
+
+# --- TABLE 1: HEATWAVE ---
+tbl1_rendered <- tbl1_data |>
+    rename(`Heatwave Status` = heatwave) |>
+    kbl(
+        caption = "Vaccine Distribution by Heatwave Status",
+        align = "l",
+        booktabs = TRUE
+    ) |>
+    kable_styling(
+        #bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+        latex_options = c("hold_position", "scale_down"),
+        full_width = FALSE
+    ) |>
+    row_spec(0, bold = TRUE, background = "#F2F2F2")
+
+tbl1_rendered
+
+```
+
+From Table 4.2, the proportion of observations exposed to heatwaves was low (\<0.6%) across all the 6 antigen datasets.
 
 ## Heat Index exposure
 
+The spatial and temporal variation in the heat index across DHS clusters from January 2020 to December 2024 is presented in Figure 4.2. Across the study period, the heat index ranged from 11°C to 43°C and exhibited a clear seasonal pattern, with hotter conditions generally occurring between December and June and cooler conditions between June and December. The hotter conditions were more sustained among clusters in southern Nigeria, where periods of elevated heat index appeared longer and more intense, whereas the cooler periods were more pronounced among clusters in northern Nigeria. During the hotter period, Caution and Extreme Caution were the predominant heat-index categories, while Tolerable and Caution conditions were more prevalent during the cooler period. No cluster-day observations were classified as Extreme Danger ($\geq 52°$) during the study period. Across all cluster-day observations, Caution was the most prevalent heat-index category, accounting for more than 49% of observations in each year from 2020 to 2024.
+
+![The heat index classification for the period January 2020-December 2024. The y-axis represents the 1,380 clusters, arranged by latitude so they run from Nothern Nigeria to Southern Nigeria.](images/heat-index-class-01.png){#f2}
+
+The distribution of heat index exposure across the antigen-specific datasets is presented in Table 4.3. Across all antigens, approximately 27–28% of children were exposed to heat index conditions classified as Tolerable, while 56–59% were exposed to the Caution category. Approximately 14% of children across all antigen-specific datasets were exposed to the Extreme Caution category, and no children were exposed to the Danger and Extreme Danger categories.
+
+```{r}
+#| tbl-pos: "H"
+#| echo: false
+#| message: false
+#| warning: false
+
+tbl2_data <- vax_data |>
+  as_tibble() |>
+  count(heatclass, antigen) |>
+  group_by(antigen) |>
+  mutate(
+    pct = (n / sum(n)) * 100,
+    cell_value = sprintf("%s (%.1f%%)", format(n, big.mark = ","), pct)
+  ) |>
+  ungroup() |>
+  select(heatclass, antigen, cell_value) |>
+  pivot_wider(names_from = antigen, values_from = cell_value, values_fill = "0 (0.0%)")
+
+tbl2_rendered <- tbl2_data |>
+  rename(`Heat Index` = heatclass) |>
+  kbl(
+    caption = "Vaccine Distribution by Heat Index Category",
+    align = "l",
+    booktabs = TRUE
+  ) |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    full_width = FALSE
+  ) |>
+  row_spec(0, bold = TRUE, background = "#F2F2F2")
+
+tbl2_rendered
+
+```
+
 ## Vaccine timeliness
+
+As shown in Table 4.4, vaccination timeliness within 28 days of the recommended vaccination date varied across antigens. BCG and Pentavalent 1 were the only antigens for which the median age at vaccination was within the recommended period, with median vaccination ages of 22 days for BCG and 67 days for Pentavalent 1, compared with recommended ages of 29 and 70 days, respectively. For all other antigens, the median age at vaccination was beyond the recommended date, with Vitamin A showing the greatest delay, with a median vaccination age 309 days beyond its recommended vaccination date. The proportion of children vaccinated within 28 days of the recommended date was highest for BCG (53%) and Pentavalent 1 (51%), while Vitamin A had the lowest proportion, at 18%.
+
+![represents the Kaplan-Meier plots for the vaccines considered upto 3 years.](images/all-coverage.png)
+
+Vaccination coverage increased with age across all antigens. By 3 years of age, BCG had the highest coverage at 67%, followed by Pentavalent 1 (62%), Pentavalent 2 (60%), Vitamin A (55%), Pentavalent 3 (54%), and MCV1 (52%). Overall, coverage at 3 years exceeded 50% for all antigens. Coverage was generally higher for vaccines scheduled earlier in childhood, such as BCG at birth and the pentavalent doses, than for vaccines scheduled later, such as MCV1 at 9 months.
+
+```{r}
+#| tbl-pos: "H"
+#| echo: false
+#| message: false
+#| warning: false
+
+library(kableExtra)
+library(knitr)
+
+vax_summary_df <- structure(
+  list(
+    Vaccine = c("BCG", "Pentavalent 1", "Pentavalent 2", "Pentavalent 3", "Vitamin A", "MCV1"), 
+    `Median age` = c(22, 67, 127, 305, 520, 587), 
+    `Coverage 28d` = c("53.23\\%", "51\\%", "42.78\\%", "34\\%", "18.13\\%", "36.97\\%"), 
+    `Coverage 3y` = c("67.14\\%", "62.82\\%", "59.62\\%", "53.69\\%", "55.37\\%", "52.08\\%")
+  ), 
+  class = "data.frame", 
+  row.names = c(NA, -6L)
+)
+
+colnames(vax_summary_df) <- linebreak(
+  c(
+    "Vaccine",
+    "Median age at\nvaccination (days)",
+    "Vaccination coverage\nwithin 28 days of due date",
+    "Vaccination coverage\nat 3 years"
+  ), 
+  align = "c"
+)
+
+vax_summary_df |>
+  kable(
+    format = "latex",
+    booktabs = TRUE,
+    caption = "Unweighted statistics of vaccination coverage and timeliness",
+    linesep = "",
+    escape = FALSE
+  ) |>
+  kable_styling(latex_options = c("hold_position")) |>
+  row_spec(0, bold = TRUE)
+```
 
 ## Heat exposure and vaccine timeliness
 
-## Timeliness statistics by threshold
+As shown in Figure 4.4, the association between heatwave occurrence and vaccination timeliness varied across antigens. Heatwave exposure was associated with approximately twice longer time to BCG vaccination (ETR 2.19; 95% CI: 0.76–6.34) and with slightly longer vaccination times for Pentavalent 1 (ETR 1.23; 95% CI: 0.63–2.39) and Pentavalent 2 (ETR 1.21; 95% CI: 0.69–2.10). In contrast, heatwave exposure was associated with a 15% shorter vaccination times for Pentavalent 3 (ETR 0.85; 95% CI: 0.53–1.34) and 10% shorter vaccination times Vitamin A (ETR 0.90; 95% CI: 0.64–1.27), while the estimate for MCV1 was close to 1 (ETR 1.00; 95% CI: 0.82–1.22), indicating little difference in vaccination time between children exposed and unexposed to heatwaves. For the heatwave exposure analysis, the confidence intervals for all antigens included the null value of 1, indicating that none of the observed associations were statistically significant.
+
+The association between heat index category and vaccination timeliness was more consistent for the earlier antigens. Compared with the Tolerable category, children exposed to Caution and Extreme Caution conditions had longer vaccination times for BCG, with ETRs of 1.32 (95% CI: 1.11–1.57) and 1.71 (95% CI: 1.34–2.18) respectively. Similar patterns were observed for Pentavalent 1 and Pentavalent 2, where both Caution and Extreme Caution were associated with longer vaccination times. For Pentavalent 3, the estimates were closer to 1 (ETR 1.03 for Caution and 1.06 for Extreme Caution), while Vitamin A showed slightly shorter vaccination times under both heat categories (ETR 0.95 for both Caution and Extreme Caution). For MCV1, the estimates were also close to 1 for both Caution (ETR 1.00; 95% CI: 0.94–1.06) and Extreme Caution (ETR 1.02; 95% CI: 0.95–1.09).
+
+Model coefficients for the rest of the covariates in both models are presented in the supplementary material.
+
+![represents the exponentiated coefficients from the survival models for both exposures. The exponentiated coefficients are Event time Ratios (ETRs), and are presented as estimate, with the 95% confidence intervals.](images/heat-coef-plot.png)
+
+## Model-standardized vaccination timeliness under heat exposure scenarios
+
+The model-standardized predicted vaccination coverage within the selected timeliness thresholds (7, 14, 21 and 28 days) is presented in Figure 4.5 These estimates represent the predicted coverage under hypothetical scenarios in which all children were exposed to a given heat-index category, while standardizing for the distribution of the other covariates in the study population.
+
+![represents model-standardized proportion of children vaccinated by days past the recommended vaccination date, by heat exposure. Each tile represents the model-standardized proportion of children who had received the respective antigen by the specified number of days after the recommended vaccination date. The x-axis shows days past the recommended vaccination date (7, 14, 21 and 28 days), while the y-axis shows the categories of the relevant heat exposure. The figure is faceted by antigen, with separate panels for the heatwave and heat-index exposures. Estimates represent the predicted proportion vaccinated under each exposure scenario, while averaging over the observed distribution of the other covariates in the model.](images/marginal-preds-01.png)
+
+For the models using heat index as the exposure, predicted vaccination coverage within the timeliness threshold was generally higher under the Tolerable heat-index category than under Caution and Extreme Caution for BCG, Pentavalent 1 and Pentavalent 2. For Pentavalent 3, Vitamin A and MCV1, the predicted vaccination coverage was broadly similar across the heat-index categories. For models using heatwave occurrence as the exposure, the predicted vaccination coverage within the timeliness threshold was very similar between children under the Heatwave and No Heatwave scenarios across all antigens. When rounded to zero decimal places, the predictions were equivalent across the two exposure categories, indicating little difference in predicted vaccination timeliness under the two hypothetical heatwave scenarios.
+
+Across antigens, predicted vaccination coverage within the timeliness threshold was generally higher for vaccines scheduled earlier in childhood, such as BCG and Pentavalent 1, than for vaccines scheduled later such as Pentavalent 3 and MCV1. Vitamin A was an exception, with the lowest predicted vaccination coverage within the timeliness threshold across the antigens, including lower coverage than MCV1 despite being scheduled at an earlier age (6 months compared to MCV1 at 9 months). This pattern was observed across the different heat-index and heatwave scenarios.
+
+At the 28-day timeliness threshold, BCG had the highest predicted vaccination coverage within the timeliness threshold across the exposure scenarios. Under the Tolerable, Caution and Extreme Caution heat-index scenarios, the model-standardized predicted coverage for BCG was 39%, 36% and 33%, respectively. Under the No Heatwave and Heatwave scenarios, the predicted coverage was 36% in both groups. For the other antigens, predicted coverage at 28 days ranged from 23–27% for Pentavalent 1, 20–22% for Pentavalent 2, 17–18% for Pentavalent 3, 9–10% for Vitamin A and 16% for MCV1 across the heat-index categories. Under the heatwave scenarios, the corresponding estimates were 36%, 25%, 21%, 18%, 10% and 17%, respectively for the antigens.
