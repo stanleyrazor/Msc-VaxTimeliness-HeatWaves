@@ -316,7 +316,7 @@ As shown in Table 4.4, vaccination timeliness within 28 days of the recommended 
 
 ![represents the Kaplan-Meier plots for the vaccines considered upto 3 years.](images/all-coverage.png)
 
-Vaccination coverage increased with age across all antigens. By 3 years of age, BCG had the highest coverage at 67%, followed by Pentavalent 1 (62%), Pentavalent 2 (60%), Vitamin A (55%), Pentavalent 3 (54%), and MCV1 (52%). Overall, coverage at 3 years exceeded 50% for all antigens. Coverage was generally higher for vaccines scheduled earlier in childhood, such as BCG at birth and the pentavalent doses, than for vaccines scheduled later, such as MCV1 at 9 months.
+Vaccination coverage increased with age across all antigens. By 3 years of age, BCG had the highest coverage at 67%, followed by Pentavalent 1 (62%), Pentavalent 2 (60%), Vitamin A (55%), Pentavalent 3 (54%), and MCV1 (52%). Vitamin A exhibited a step-like cumulative vaccination curve, as opposed to all other antigens, which exhibited a gradual rise and plateau in their cumulative vaccination coverage (Figure 4.3). Overall, coverage at 3 years exceeded 50% for all antigens. Coverage was generally higher for vaccines scheduled earlier in childhood, such as BCG at birth and the pentavalent doses, than for vaccines scheduled later, such as MCV1 at 9 months.
 
 ```{r}
 #| tbl-pos: "H"
@@ -366,13 +366,13 @@ As shown in Figure 4.4, the association between heatwave occurrence and vaccinat
 
 The association between heat index category and vaccination timeliness was more consistent for the earlier antigens. Compared with the Tolerable category, children exposed to Caution and Extreme Caution conditions had longer vaccination times for BCG, with ETRs of 1.32 (95% CI: 1.11–1.57) and 1.71 (95% CI: 1.34–2.18) respectively. Similar patterns were observed for Pentavalent 1 and Pentavalent 2, where both Caution and Extreme Caution were associated with longer vaccination times. For Pentavalent 3, the estimates were closer to 1 (ETR 1.03 for Caution and 1.06 for Extreme Caution), while Vitamin A showed slightly shorter vaccination times under both heat categories (ETR 0.95 for both Caution and Extreme Caution). For MCV1, the estimates were also close to 1 for both Caution (ETR 1.00; 95% CI: 0.94–1.06) and Extreme Caution (ETR 1.02; 95% CI: 0.95–1.09).
 
-Model coefficients for the rest of the covariates in both models are presented in the supplementary material.
+Model coefficients for the rest of the covariates in both models are presented in the appendix.
 
 ![represents the exponentiated coefficients from the survival models for both exposures. The exponentiated coefficients are Event time Ratios (ETRs), and are presented as estimate, with the 95% confidence intervals.](images/heat-coef-plot.png)
 
 ## Model-standardized vaccination timeliness under heat exposure scenarios
 
-The model-standardized predicted vaccination coverage within the selected timeliness thresholds (7, 14, 21 and 28 days) is presented in Figure 4.5 These estimates represent the predicted coverage under hypothetical scenarios in which all children were exposed to a given heat-index category, while standardizing for the distribution of the other covariates in the study population.
+The model-standardized predicted vaccination coverage within the selected timeliness thresholds (7, 14, 21 and 28 days) is presented in Figure 4.5 These estimates represent the predicted coverage under hypothetical scenarios in which all children were exposed to a given heat exposure category, while standardizing for the distribution of the other covariates in the study population.
 
 ![represents model-standardized proportion of children vaccinated by days past the recommended vaccination date, by heat exposure. Each tile represents the model-standardized proportion of children who had received the respective antigen by the specified number of days after the recommended vaccination date. The x-axis shows days past the recommended vaccination date (7, 14, 21 and 28 days), while the y-axis shows the categories of the relevant heat exposure. The figure is faceted by antigen, with separate panels for the heatwave and heat-index exposures. Estimates represent the predicted proportion vaccinated under each exposure scenario, while averaging over the observed distribution of the other covariates in the model.](images/marginal-preds-01.png)
 

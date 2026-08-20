@@ -1,1 +1,19 @@
-# Appendix  {.unnumbered}
+# Appendix {.unnumbered}
+
+## 5-day rolling temperatures
+
+The 5-day rolling temperatures showed marked temporal and spatial variability in Figure 5.1. The period from December to June generally exhibited higher temperatures, while the period from June to December was characterised by cooler temperatures. Northern Nigeria experienced more pronounced hot periods compared with central and southern Nigeria. Across the five-year period, temperatures recorded across all DHS clusters ranged from 14°C to 37°C.
+
+![represents the 5-day rolling temperature average across all days from 2020 January to December 2024, and in all DHS clusters arranged appropriately by latitude to cover Southern Nigeria to Northern Nigeria.](images/tx5x.png)
+
+## Heatwave computation methodology
+
+The figure 5.2 shows the flow chart used in the computation of the heatwave index.
+
+![represents a pictorial of the methodology used in classification of heatwave events in this study.](images/stepchart.png)
+
+## AFT model coefficients
+
+Across the covariates shown in Figure 5.3, the magnitude of the ETRs appeared to be generally larger for the earlier antigens, particularly BCG and Pentavalent 1, than for the later antigens such as Vitamin A and MCV1. An ETR below 1 indicates a shorter estimated time to vaccination compared with the reference group, while an ETR above 1 indicates a longer estimated time. Compared with the North West, most geopolitical zones had ETRs below 1, indicating shorter estimated vaccination times, while North Central was generally closer to the reference. Mothers aged 20 years or older generally had shorter estimated times to vaccination than teenage mothers (≤19 years). Similarly, mothers with primary, secondary or higher education had shorter estimated vaccination times than mothers with no formal education. Children from the richer and richest wealth groups, and in some models the middle group, also generally had shorter vaccination times than those in the poorest group. Children delivered in health facilities had shorter estimated vaccination times than those delivered at home across the antigens. In contrast, the ETRs for birth order, residence and child's gender were generally close to 1, suggesting smaller differences in estimated vaccination time between their respective categories. Overall, the direction of the estimates was broadly consistent across antigens, although the magnitude of the associations varied.
+
+![represents the ETR for the rest of the adjusted covariates in the model. The plot is faceted based on the exposure.](images/covariate-forest-plot-01.png)

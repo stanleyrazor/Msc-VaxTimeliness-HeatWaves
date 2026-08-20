@@ -532,15 +532,15 @@ standardize_curve <- function(x, scenario_value = NULL, heat_var = "heatindex",
 }
 
 # curvs for any given number of days
-curves <- map_dfr(c("Tolerable", "Caution", "Extreme Caution"), function(s) {
-  data.frame(
-    Scenario = s,
-    Day = 1:1095,
-    Coverage = standardize_curve(x, scenario_value = s, days = 1:1095, w = w)
-  )
-})
-
-ggplot(curves) + geom_line(aes(x = Day, y = Coverage, col =Scenario))
+# curves <- map_dfr(c("Tolerable", "Caution", "Extreme Caution"), function(s) {
+#   data.frame(
+#     Scenario = s,
+#     Day = 1:1095,
+#     Coverage = standardize_curve(x, scenario_value = s, days = 1:1095, w = w)
+#   )
+# })
+#
+# ggplot(curves) + geom_line(aes(x = Day, y = Coverage, col =Scenario))
 
 # coverage as at timeliness thresholds
 mvxd <- avxd <- list()
@@ -652,6 +652,9 @@ patchwork::wrap_plots(p1, p2, nrow = 2, heights = c(2, 1))
 ggsave('../output/img/marginal-preds.png', height = 8, width = 12, dpi = 1e3)
 
 
+
+
+
 # Performance comparison --------------------------------------------------
 
 avxd |>
@@ -666,4 +669,81 @@ avxd |>
   labs(x = 'Age (in days)', x = 'Vaccine coverage') +
   facet_wrap(~Exposure) +
   theme_bw(base_family = 'Times New Roman')
+
+
+# Coeff plots -------------------------------------------------------------
+
+antigens <- c('bcg', 'penta1', 'penta2', 'penta3', 'vita1', 'mcv1')
+usenames <- c('BCG', 'Pentavalent 1', 'Pentavalent 2', 'Pentavalent 3', 'Vitamin A', 'MCV1')
+f1 <- data.frame()
+
+for (i in 1:length(antigens)) {
+  m <- readRDS(paste0('../output/models/', antigens[i], '-file.rds'))
+  d1 <- 1:2 |>
+    map(\(j) {
+    confint(m[[j]]) |>
+      data.frame() |>
+      mutate(est = coef(m[[j]]) |> unname(),
+             across(everything(), exp)
+             ) |>
+      setNames(c('lwr', 'upr', 'est')) |>
+      mutate(exposure = c('Heatwave', 'Heat Index')[j]) |>
+        tibble::rownames_to_column('var')
+  }) |>
+    bind_rows() |>
+    filter(var != '(Intercept)') |>
+    mutate(
+      antigen = usenames[i],
+      levels = str_remove_all(var, "heatwave|place_delivery|residence|child_gender|time_to_hf|wealth_index|meduc|mother_age_group|geozone|heatindex"),
+      levels = ifelse(var == 'birth_order', '(Numeric)', levels),
+      var = case_when(
+        str_detect(var, 'heatwave') ~ 'Heatwave exposure\n(Ref: No heatwave)',
+        str_detect(var, 'place_delivery') ~ 'Place of delivery\n(Ref: Home delivery)',
+        str_detect(var, 'residence') ~ 'Residence\n(Ref: Urban)',
+        str_detect(var, 'child_gender') ~ "Child's gender\n(Ref: Male)",
+        str_detect(var, 'time_to_hf') ~ 'Travel time\nto the nearest facility\n(Ref: <30 minutes)',
+        str_detect(var, 'wealth_index') ~ 'Wealth Index\n(Ref: Poorest)',
+        str_detect(var, 'meduc') ~ "Mother's highest education\n(Ref: No education)",
+        str_detect(var, 'mother_age_group') ~ "Mother's age group\nat birth\n(Ref: <19 years)",
+        str_detect(var, 'geozone') ~ 'Geopolitical zone\n(Ref: North West)',
+        str_detect(var, 'birth_order') ~ 'Birth order',
+        T ~ 'Heat Index Exposure\n(Ref: Tolerable)'
+      )
+    ) |>
+    filter(
+      var != 'Heatwave exposure\n(Ref: No heatwave)' & var != 'Heat Index Exposure\n(Ref: Tolerable)'
+    )
+
+  if (i == 1) f1 <- d1
+  else f1 <- bind_rows(f1, d1)
+
+}
+
+
+f1 |>
+  # filter(antigen == 'MCV1') |>
+  mutate(
+    antigen = factor(antigen, levels = usenames, labels = usenames),
+    across(c(lwr, upr, est), \(x) ifelse(x > 5, NA, x))
+    ) |>
+  ggplot(aes(x = est, y = levels, color = antigen)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_point(shape = 15, size = 2, position = position_dodge(width = .7)) +
+  geom_errorbarh(aes(xmin = lwr, xmax = upr), height = 0.2, position = position_dodge(width = .7)) +
+  facet_grid(var ~ exposure, scales = "free_y", space = "free_y") +
+  labs(
+    x = "Estimated Effect (ETR)",
+    y = "Levels",
+    col = 'Antigen'
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = 'bottom',
+    strip.text.y = element_text(angle = 0, hjust = 0), # Keeps the group names horizontal
+    panel.spacing = unit(0.5, "lines") # Puts a nice gap between categories
+  )
+ggsave(filename = '../output/img/covariate-forest-plot.png',
+       width = 7.3, height = 10.7, units = "in", dpi = 1e3)
+
+
 
