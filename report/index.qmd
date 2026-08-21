@@ -1,10 +1,16 @@
 # Abstract {.unnumbered .unlisted}
 
-> All project reports should include a structured Abstract, not exceeding 300 words, on a single standalone page just after the Contents. This should appear before the main body of the project report (which will start with the introduction).
+**Background**: Extreme heat may disrupt routine childhood vaccination by affecting access to health services and vaccination timing. This study examined the association between extreme heat exposure and the timeliness of routine childhood vaccination in Nigeria.
 
-> The Abstract may be structured into four key sections: - Background – summarising the problem being considered. - Methods – describing how the study was performed. - Results – listing the salient results. - Conclusions – stating the principal conclusions.
+**Methods**: Data from the 2024 Nigeria Demographic and Health Survey were linked with ERA5 temperature data for 2020–2024. The study included children aged 0–36 months and assessed timeliness of BCG, Pentavalent 1–3, Vitamin A and measles-containing vaccine 1 (MCV1). Heat exposure was measured using two approaches: a heatwave indicator based on a 5-day rolling temperature average, a 4-year return level and a 1940–2019 historical baseline, and a heat-index classification. Heat exposure was assessed within a 14-day window around the recommended vaccination date. Weibull accelerated failure time models were used to estimate associations between heat exposure and vaccination time, adjusting for selected demographic and socioeconomic characteristics. Model-standardized predicted vaccination coverage within selected timeliness thresholds was also estimated under different heat-exposure scenarios.
+
+**Results**: Vaccination timeliness was suboptimal, with substantial delays across the vaccination schedule. BCG and Pentavalent 1 had the highest proportion vaccinated within 28 days of the recommended date (53% and 51%), while Vitamin A had the lowest (18%). Heatwave exposure was not clearly associated with vaccination timeliness, although point estimates generally indicated longer vaccination times for earlier antigens. In contrast, higher heat-index categories were associated with longer vaccination times for BCG, Pentavalent 1 and Pentavalent 2, with weaker associations for later antigens. The direction of associations was consistent across the two heat-exposure measures.
+
+**Conclusions**: Vaccination timeliness in Nigeria was suboptimal, and the relationship between extreme heat and vaccination timeliness varied by the exposure measure and vaccination schedule. Earlier vaccines appeared more affected by extreme heat than later ones. These findings highlight the potential importance of considering extreme heat when planning and delivering routine immunisation services.
 
 
 # Acknowledgements {.unnumbered .unlisted}
 
-> Your project report should include an Acknowledgements section, before the Introduction to your work proper. Detailed guidance on what to put in the Acknowledgements section is given in Section 12.1
+I would like to sincerely thank my supervisor, Dr. Kathleen O’Reilly, for her guidance, encouragement, and valuable feedback throughout this project. I am especially grateful for the time she gave to this work despite her demanding schedule. I would also like to thank my tutor, Dr. David Macleod, whose discussions helped shape my thinking during the early stages of this project. I am grateful to the Demographic and Health Surveys (DHS) Program for providing access to the data used in this study. 
+
+I also thank my classmates, particularly Paddy Kafeero, for the valuable discussions throughout the project. Finally, I thank God for His grace and strength, and my family for their constant support and patience throughout my studies.

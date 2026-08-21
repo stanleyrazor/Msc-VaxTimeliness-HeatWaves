@@ -48,6 +48,8 @@ $$Z_{4}=\mu+\frac{\sigma}{\zeta}[(-\log_e(0.75))^{-\zeta}-1], \zeta\neq0$$
 
 Each Tx5x observation during the analysis period (January 2020–May 2024) was then compared with the corresponding DHS cluster-specific return level. Days for which the Tx5x index exceeded the return level $(Z_{4})$ were classified as heatwave days, whereas all remaining days were classified as non-heatwave days. This produced a daily binary heatwave indicator for every DHS cluster and each observation was classified as heatwave-exposed if at least one heatwave day occurred within a 15-day exposure window centered on the scheduled vaccination date (7 days before to 7 days after).
 
+A flow diagram on this procedure is shown in the appendix section 5.2.
+
 ### Heat Index exposure variable
 
 The heat index was calculated using 2-metre air temperature and 2-metre dewpoint temperature. The calculation followed the heat index algorithm developed by the U.S. National Weather Service (NWS), which is described by Anderson et al. [@anderson2013; @nationalweatherservice2011]. The weathermetrics package [@anderson2013] was used to implement this algorithm.
@@ -183,6 +185,12 @@ $$
 where $w_i$ denotes the survey weight for child $i$.
 
 Thus, the resulting estimate represents the expected vaccination coverage by $t (t=7,14,21,28)$ days after the recommended vaccination date under a specified heat-exposure scenario, standardized to the covariate distribution of the study population.
+
+### Model check and sensitivity analysis
+
+To assess the appropriateness of the Weibull distribution and the constant acceleration factor assumption for the complex survey data, survey-weighted complementary log-log survival plots $((\log(-\log(S(t)))$ versus $(\log(t))$ were visually inspected to assess for a parallel and linear fit. The reuslts are presented in the Appendix section 5.4
+
+A sensitivity analysis was also conducted to assess the effect of two methodological choices: the exposure window around the vaccination due date and the temperature rolling window. Exposure windows of 3 and 14 days were compared with the 7-day window used in the main analysis, while 3- and 7-day rolling temperature windows were compared with the 5-day window used in the main analysis. This resulted in 54 models, with nine models for each antigen. The analysis assessed how these choices affected the AFT coefficients for the heatwave exposure variable. The return level used to classify heatwaves was kept at four years in all sensitivity analyses. The results are presented in Appendix Section 5.5.
 
 ### Statistical software
 

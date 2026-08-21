@@ -366,7 +366,7 @@ As shown in Figure 4.4, the association between heatwave occurrence and vaccinat
 
 The association between heat index category and vaccination timeliness was more consistent for the earlier antigens. Compared with the Tolerable category, children exposed to Caution and Extreme Caution conditions had longer vaccination times for BCG, with ETRs of 1.32 (95% CI: 1.11–1.57) and 1.71 (95% CI: 1.34–2.18) respectively. Similar patterns were observed for Pentavalent 1 and Pentavalent 2, where both Caution and Extreme Caution were associated with longer vaccination times. For Pentavalent 3, the estimates were closer to 1 (ETR 1.03 for Caution and 1.06 for Extreme Caution), while Vitamin A showed slightly shorter vaccination times under both heat categories (ETR 0.95 for both Caution and Extreme Caution). For MCV1, the estimates were also close to 1 for both Caution (ETR 1.00; 95% CI: 0.94–1.06) and Extreme Caution (ETR 1.02; 95% CI: 0.95–1.09).
 
-Model coefficients for the rest of the covariates in both models are presented in the appendix.
+Model coefficients for the rest of the covariates in both models are presented in the appendix section 5.3.
 
 ![represents the exponentiated coefficients from the survival models for both exposures. The exponentiated coefficients are Event time Ratios (ETRs), and are presented as estimate, with the 95% confidence intervals.](images/heat-coef-plot.png)
 

@@ -28,7 +28,7 @@ csl: vancouver.csl
 candidate-number: "493736"
 msc-course: "Medical Statistics"
 academic-year: "2025-26"
-page-count: "51"
+page-count: "37"
 project-length: "Standard" # Extended (MSc IID only)
 ################################################
 
@@ -40,7 +40,7 @@ format:
     toc: true
     toc-depth: 2
     toc-title: "Table of contents"
-    # lof: false
+    lof: true
     # lot: false
     number-sections: true
     number-depth: 2
