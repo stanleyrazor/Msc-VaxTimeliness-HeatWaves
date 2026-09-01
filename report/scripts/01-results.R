@@ -6,7 +6,7 @@
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
                purrr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
                ggsurvfit, icenReg, sf, kableExtra, tidyr, viridisLite, autoReg, flexsurv,
-               survey, lubridate, here)
+               survey, lubridate, here, gtsummary)
 mvs <- naniar::miss_var_summary
 source('../R/autoReg-modifier.R')
 
@@ -37,14 +37,12 @@ setDT(hi_data)
 
 # Table 1 -----------------------------------------------------------------
 
-pacman::p_load(gtsummary, dplyr)
-
 # data
 antigen <- c('bcg', 'penta1', 'penta2', 'penta3', 'vita1', 'mcv1')
 usenames <- c('BCG', 'Pentavalent 1', 'Pentavalent 2', 'Pentavalent 3', 'Vitamin A', 'MCV1')
 
-ldata <- readRDS('data/processed/vaxdata-components.rds')
-cdata <- readRDS('data/processed/dhs-covariates.rds')
+ldata <- readRDS('../data/processed/vaxdata-components.rds')
+cdata <- readRDS('../data/processed/dhs-covariates.rds')
 use_ldata <- ldata[antigen]
 
 for (i in 1:length(use_ldata)) use_ldata[[i]] <- use_ldata[[i]] |> mutate(antigen = usenames[i])
@@ -240,11 +238,11 @@ p <- ggplot(admin2_res) +
   )
 
 ggsave(
-  paste0("output/img/heatmaps/", "heat-index-class.png"),
+  paste0("../output/img/heatmaps/", "heat-index-class.png"),
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 
@@ -399,27 +397,27 @@ for (i in 1:length(antigen)) {
   cov_3y[i] <- round((1 - fit_summary_3y$surv) * 100, 2)
   median_aav[i] <- summary(survmodel)$table["median"] |> as.numeric()
 
-  # plt[[i]] <- survmodel |>
-  #   ggsurvfit(type = "risk") +
-  #   add_confidence_interval() +
-  #   add_censor_mark(shape = '+') +
-  #   scale_ggsurvfit(
-  #     x_scales = list(breaks = seq(0, 1095, 100)),
-  #     y_scales = list(labels = scales::percent, limits = c(0, 1))
-  #   ) +
-  #   add_risktable(
-  #     risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
-  #                         "{format(round(n.event, 0), nsmall = 0)}"),
-  #     stats_label = c("At risk",
-  #                     "Events")
-  #   ) +
-  #   theme_ggsurvfit_KMunicate() +
-  #   labs(
-  #     title = usenames[i],
-  #     x = "Age (in days)",
-  #     y = "Cumulative Vaccination Coverage"
-  #   )
-  # ggsave(filename = paste0('../output/img/', antigen[i], "/overall.png"), plot = plt[[i]], height = 8, width = 8, dpi = 1000)
+  plt[[i]] <- survmodel |>
+    ggsurvfit(type = "risk") +
+    add_confidence_interval() +
+    add_censor_mark(shape = '+') +
+    scale_ggsurvfit(
+      x_scales = list(breaks = seq(0, 1095, 100)),
+      y_scales = list(labels = scales::percent, limits = c(0, 1))
+    ) +
+    add_risktable(
+      risktable_stats = c("{format(round(n.risk, 0), nsmall = 0)}",
+                          "{format(round(n.event, 0), nsmall = 0)}"),
+      stats_label = c("At risk",
+                      "Events")
+    ) +
+    theme_ggsurvfit_KMunicate() +
+    labs(
+      title = usenames[i],
+      x = "Age (in days)",
+      y = "Cumulative Vaccination Coverage"
+    )
+  ggsave(filename = paste0('../output/img/', antigen[i], "/overall.png"), plot = plt[[i]], height = 8, width = 8, dpi = 300)
 
 
 }
@@ -436,7 +434,7 @@ data.frame(
 
 ggsave(filename = paste0('../output/img/all-coverage.png'),
        plot = ((plt[[1]] | plt[[2]] | plt[[3]]) / (plt[[4]] | plt[[5]] | plt[[6]])),
-       height = 6, width = 12, dpi = 1000)
+       height = 6, width = 12, dpi = 300)
 
 
 # Heat and Timeliness -----------------------------------------------------
@@ -510,7 +508,7 @@ tbl |>
   )
 
 ggsave('../output/img/heat-coef-plot.png',
-       dpi = 1e3, height = 6, width = 12)
+       dpi = 300, height = 6, width = 12)
 
 
 # avg marginal cum-vax-cov ------------------------------------------------
@@ -649,10 +647,7 @@ p2 <- bind_rows(mvxd) |>
   theme_bw(base_family = 'Times New Roman')
 
 patchwork::wrap_plots(p1, p2, nrow = 2, heights = c(2, 1))
-ggsave('../output/img/marginal-preds.png', height = 8, width = 12, dpi = 1e3)
-
-
-
+ggsave('../output/img/marginal-preds.png', height = 8, width = 12, dpi = 300)
 
 
 # Performance comparison --------------------------------------------------
@@ -743,7 +738,7 @@ f1 |>
     panel.spacing = unit(0.5, "lines") # Puts a nice gap between categories
   )
 ggsave(filename = '../output/img/covariate-forest-plot.png',
-       width = 7.3, height = 10.7, units = "in", dpi = 1e3)
+       width = 7.3, height = 10.7, units = "in", dpi = 300)
 
 
 

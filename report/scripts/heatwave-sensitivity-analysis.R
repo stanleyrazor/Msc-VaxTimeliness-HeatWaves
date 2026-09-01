@@ -396,6 +396,7 @@ saveRDS(full_data, '../data/processed/heatwave-sensitivity-analysis.rds')
 
 # Plotting results --------------------------------------------------------
 
+full_data <- readRDS('../data/processed/heatwave-sensitivity-analysis.rds')
 {
   full_data <- readRDS('../data/processed/heatwave-sensitivity-analysis.rds') |>
     mutate(rolling = paste0('Rolling window (days): ', rolling),
@@ -474,7 +475,7 @@ ggplot(sens |> #mutate(across(starts_with('aft'), \(x) ifelse(x > 7, NA, x))) |>
     axis.line.y = element_blank(),
     legend.position = 'bottom'
   )
-ggsave('../output/img/sensitivity/aft-est.png', height = 7, width = 9, dpi = 1e3)
+ggsave('../output/img/sensitivity/aft-est.png', height = 7, width = 9, dpi = 300)
 
 # table
 d1 <- sens |> filter(quantile == 'Return level (years): 4') |>
@@ -529,7 +530,7 @@ ggplot(
     panel.grid = element_blank(),
     strip.background = element_rect()
   )
-ggsave('../output/img/sensitivity/prop-exposed.png', height = 6, width = 12, dpi = 1e3)
+ggsave('../output/img/sensitivity/prop-exposed.png', height = 6, width = 12, dpi = 300)
 
 
 # plot 2

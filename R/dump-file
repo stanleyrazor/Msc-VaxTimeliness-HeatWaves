@@ -1,3 +1,10 @@
+The full likelihood was then obtained by taking the product of the individual likelihood contributions,
+
+$$L(\boldsymbol{\theta})=\prod_{i=1}^{n}L_i(\boldsymbol{\theta}),$$
+
+
+
+
 # plotting terra and overlay boundary:
 adm0 <- gadm('Nigeria', level = 0, path = 'data/shp/')
 plot(adm0)

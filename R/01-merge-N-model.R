@@ -3,7 +3,7 @@
 pacman::p_load(posterior, tidybayes, rstanarm, marginaleffects, data.table, brms,
                purrr, dplyr, haven, ggplot2, janitor, lubridate, stringr , survival,
                ggsurvfit, icenReg, sf, kableExtra, tidyr, viridisLite, autoReg, flexsurv,
-               survey, lubridate, here)
+               survey, lubridate, here, scales)
 mvs <- naniar::miss_var_summary
 source('R/autoReg-modifier.R')
 
@@ -41,7 +41,6 @@ setDT(hi_data)
 # setDT(cds_areal); setkey(cds_areal, cluster, date)
 
 # Tabling heatwave stats --------------------------------------------------
-
 
 g <- expand.grid(
   antigen = c('bcg', 'penta1', 'penta2', 'penta3', 'mcv1'),
@@ -197,7 +196,7 @@ for(i in seq_along(yrs)){
     p,
     width = 12,
     height = 9,
-    dpi = 1000
+    dpi = 300
   )
 }
 
@@ -277,7 +276,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 # Threshold plot
@@ -350,7 +349,7 @@ ggsave(
   p,
   width = 12,
   height = 4,
-  dpi = 1000
+  dpi = 300
 )
 
 # plotting a line plot:
@@ -379,7 +378,7 @@ ggsave(
   p,
   width = 12,
   height = 5,
-  dpi = 1000
+  dpi = 300
 )
 
 # heatwave classification over time, and by location
@@ -432,7 +431,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 
@@ -500,7 +499,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 # plotting map of num days heatwave exposed
@@ -578,7 +577,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 
@@ -672,7 +671,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 
@@ -723,7 +722,7 @@ ggsave(
   p,
   width = 12,
   height = 9,
-  dpi = 1000
+  dpi = 300
 )
 
 
@@ -1019,7 +1018,7 @@ for (i in 1:length(antigen)) {
 
 wrap_plots(plt, nrow = 6)
 ggsave('output/img/sensitivity/log-log-weibull-plots.png',
-       height = 20, width = 14, dpi = 1000)
+       height = 20, width = 14, dpi = 300)
 
 # Models ------------------------------------------------------------------
 
@@ -1379,6 +1378,6 @@ for (i in 1:length(antigen)) {
     p,
     width = 7,
     height = 7,
-    dpi = 1000
+    dpi = 300
   )
 }

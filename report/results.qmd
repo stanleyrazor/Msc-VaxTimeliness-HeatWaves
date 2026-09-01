@@ -97,7 +97,7 @@ The distribution of the characteristics was similar across the antigen-specific 
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "Study population characteristics across antigen datasets"
+#| tbl-cap: "Characteristics of the study population by eligibility for each routinely recommended antigen. Columns corresponding to each antigen show the total number of children who were eligible for the respective antigen based on their age at the time of assessment. Categorical variables are presented as number (%), while continuous variables are presented as mean (standard deviation [SD]). Percentages are calculated within the respective antigen-specific population."
 
 use_ldata <- ldata[antigen]
 
@@ -222,13 +222,14 @@ Among clusters that experienced at least one heatwave day, 507 clusters were aff
 
 ![](images/temp-thresh-4.png)
 
-![The spatial distribution of the cumulative number of heatwave (in days), faceted by year. Observations with 0 days of heatwaves (colored black) have been assigned a smaller size to avoid crowding the plot.](images/heatwave-map-03.png)
+![Heatwave thresholds and spatial distribution of cumulative heatwave days across Nigeria, 2020–2024. The first panel shows the heatwave thresholds used to classify each DHS cluster as exposed or unexposed to a heatwave. The x-axis represents the 1,380 clusters, ordered by latitude from southern to northern Nigeria, while the y-axis represents the years 2020–2024. The threshold for each cluster and year was defined using the 1-in-4-year return level. The second panel shows the spatial distribution of the DHS clusters, with colours representing the cumulative number of heatwave days experienced by each cluster in each year. The spatial distribution is presented separately for each year. Clusters with zero heatwave days are shown in black and assigned a smaller point size to reduce overplotting and improve visualisation.](images/heatwave-map-05.png)
 
 ```{r}
 #| tbl-pos: "H"
 #| echo: false
 #| message: false
 #| warning: false
+#| tbl-cap: "The distribution of observations by heatwave exposure status across antigen-specific datasets. Values are presented as number (%), with each column representing the corresponding antigen-specific dataset. Heatwave status indicates whether the child was exposed to a heatwave within the specified exposure window around the vaccine due date."
 
 # Pre-processing: Generate data for Table 1 (Heatwave)
 tbl1_data <- vax_data |>
@@ -250,8 +251,6 @@ tbl1_data <- vax_data |>
 tbl1_rendered <- tbl1_data |>
     rename(`Heatwave Status` = heatwave) |>
     kbl(
-        caption = "Vaccine Distribution by Heatwave Status",
-        align = "l",
         booktabs = TRUE
     ) |>
     kable_styling(
@@ -271,7 +270,7 @@ From Table 4.2, the proportion of observations exposed to heatwaves was low (\<0
 
 The spatial and temporal variation in the heat index across DHS clusters from January 2020 to December 2024 is presented in Figure 4.2. Across the study period, the heat index ranged from 11°C to 43°C and exhibited a clear seasonal pattern, with hotter conditions generally occurring between December and June and cooler conditions between June and December. The hotter conditions were more sustained among clusters in southern Nigeria, where periods of elevated heat index appeared longer and more intense, whereas the cooler periods were more pronounced among clusters in northern Nigeria. During the hotter period, Caution and Extreme Caution were the predominant heat-index categories, while Tolerable and Caution conditions were more prevalent during the cooler period. No cluster-day observations were classified as Extreme Danger ($\geq 52°$) during the study period. Across all cluster-day observations, Caution was the most prevalent heat-index category, accounting for more than 49% of observations in each year from 2020 to 2024.
 
-![The heat index classification for the period January 2020-December 2024. The y-axis represents the 1,380 clusters, arranged by latitude so they run from Nothern Nigeria to Southern Nigeria.](images/heat-index-class-01.png){#f2}
+![Heat index classification across DHS clusters, January 2020–December 2024. The x-axis represents individual calendar days from 1 January 2020 to 31 December 2024, while the y-axis represents the 1,380 DHS clusters, arranged by latitude from northern to southern Nigeria. Each tile represents the heat index category assigned to a specific cluster on a specific day.](images/heat-index-class-02.png){#f2}
 
 The distribution of heat index exposure across the antigen-specific datasets is presented in Table 4.3. Across all antigens, approximately 27–28% of children were exposed to heat index conditions classified as Tolerable, while 56–59% were exposed to the Caution category. Approximately 14% of children across all antigen-specific datasets were exposed to the Extreme Caution category, and no children were exposed to the Danger and Extreme Danger categories.
 
@@ -280,6 +279,7 @@ The distribution of heat index exposure across the antigen-specific datasets is 
 #| echo: false
 #| message: false
 #| warning: false
+#| tbl-cap: "Distribution of observations by heat index category across antigen-specific datasets. Values represent the number and percentage of children classified within each heat index category in the respective antigen-specific dataset. Each antigen column represents the children eligible for the corresponding antigen, with heat index exposure assessed within the specified exposure window around the recommended vaccination date."
 
 tbl2_data <- vax_data |>
   as_tibble() |>
@@ -296,8 +296,6 @@ tbl2_data <- vax_data |>
 tbl2_rendered <- tbl2_data |>
   rename(`Heat Index` = heatclass) |>
   kbl(
-    caption = "Vaccine Distribution by Heat Index Category",
-    align = "l",
     booktabs = TRUE
   ) |>
   kable_styling(
@@ -314,7 +312,7 @@ tbl2_rendered
 
 As shown in Table 4.4, vaccination timeliness within 28 days of the recommended vaccination date varied across antigens. BCG and Pentavalent 1 were the only antigens for which the median age at vaccination was within the recommended period, with median vaccination ages of 22 days for BCG and 67 days for Pentavalent 1, compared with recommended ages of 29 and 70 days, respectively. For all other antigens, the median age at vaccination was beyond the recommended date, with Vitamin A showing the greatest delay, with a median vaccination age 309 days beyond its recommended vaccination date. The proportion of children vaccinated within 28 days of the recommended date was highest for BCG (53%) and Pentavalent 1 (51%), while Vitamin A had the lowest proportion, at 18%.
 
-![represents the Kaplan-Meier plots for the vaccines considered upto 3 years.](images/all-coverage.png)
+![Kaplan–Meier estimates of cumulative vaccination coverage for the study antigens up to 3 years of age. The figure presents Kaplan–Meier curves for each antigen, incorporating the relevant censoring mechanisms for the corresponding antigen-specific analysis. The x-axis represents age in days, extending to 3 years (1,095 days), while the y-axis represents cumulative vaccination coverage, estimated from the Kaplan–Meier survival probabilities showing the estimated proportion of children who had received each antigen by each age.](images/all-coverage-01.png)
 
 Vaccination coverage increased with age across all antigens. By 3 years of age, BCG had the highest coverage at 67%, followed by Pentavalent 1 (62%), Pentavalent 2 (60%), Vitamin A (55%), Pentavalent 3 (54%), and MCV1 (52%). Vitamin A exhibited a step-like cumulative vaccination curve, as opposed to all other antigens, which exhibited a gradual rise and plateau in their cumulative vaccination coverage (Figure 4.3). Overall, coverage at 3 years exceeded 50% for all antigens. Coverage was generally higher for vaccines scheduled earlier in childhood, such as BCG at birth and the pentavalent doses, than for vaccines scheduled later, such as MCV1 at 9 months.
 
@@ -323,6 +321,7 @@ Vaccination coverage increased with age across all antigens. By 3 years of age, 
 #| echo: false
 #| message: false
 #| warning: false
+#| tbl-cap: "Unweighted estimates of vaccination coverage and timeliness by antigen. The table presents, for each antigen, the median age at vaccination, vaccination coverage within 28 days of the recommended vaccination date, and vaccination coverage by 3 years of age. Estimates were derived from the Kaplan–Meier analysis."
 
 library(kableExtra)
 library(knitr)
@@ -352,7 +351,6 @@ vax_summary_df |>
   kable(
     format = "latex",
     booktabs = TRUE,
-    caption = "Unweighted statistics of vaccination coverage and timeliness",
     linesep = "",
     escape = FALSE
   ) |>
@@ -368,16 +366,22 @@ The association between heat index category and vaccination timeliness was more 
 
 Model coefficients for the rest of the covariates in both models are presented in the appendix section 5.3.
 
-![represents the exponentiated coefficients from the survival models for both exposures. The exponentiated coefficients are Event time Ratios (ETRs), and are presented as estimate, with the 95% confidence intervals.](images/heat-coef-plot.png)
+![Exponentiated coefficients from the Weibull accelerated failure time models for heatwave and heat index exposure across the six study antigens. The figure presents exponentiated accelerated failure time (AFT) coefficients as event time ratios (ETRs), with corresponding 95% confidence intervals, for each antigen. Results are shown separately for the two exposure measures. For the heatwave analysis, no heatwave is the reference category. For the heat index analysis, Tolerable is the reference category, with estimates shown for the Caution and Extreme Caution categories. An ETR greater than 1 indicates a longer time to vaccination compared with the reference category, whereas an ETR below 1 indicates a shorter time to vaccination. An ETR of 1 indicates no difference in vaccination timing between the exposure category and its reference group.](images/heat-coef-plot-01.png)
 
 ## Model-standardized vaccination timeliness under heat exposure scenarios
 
 The model-standardized predicted vaccination coverage within the selected timeliness thresholds (7, 14, 21 and 28 days) is presented in Figure 4.5 These estimates represent the predicted coverage under hypothetical scenarios in which all children were exposed to a given heat exposure category, while standardizing for the distribution of the other covariates in the study population.
 
-![represents model-standardized proportion of children vaccinated by days past the recommended vaccination date, by heat exposure. Each tile represents the model-standardized proportion of children who had received the respective antigen by the specified number of days after the recommended vaccination date. The x-axis shows days past the recommended vaccination date (7, 14, 21 and 28 days), while the y-axis shows the categories of the relevant heat exposure. The figure is faceted by antigen, with separate panels for the heatwave and heat-index exposures. Estimates represent the predicted proportion vaccinated under each exposure scenario, while averaging over the observed distribution of the other covariates in the model.](images/marginal-preds-01.png)
+![Model-standardized proportion of children vaccinated by days past the recommended vaccination date, by heat exposure. Each tile represents the model-standardized proportion of children who had received the respective antigen by the specified number of days after the recommended vaccination date. The x-axis shows days past the recommended vaccination date (7, 14, 21 and 28 days), while the y-axis shows the categories of the relevant heat exposure. The figure is faceted by antigen, with separate panels for the heatwave and heat-index exposures. Estimates represent the predicted proportion vaccinated under each exposure scenario, while averaging over the observed distribution of the other covariates in the model.](images/marginal-preds-01.png)
 
 For the models using heat index as the exposure, predicted vaccination coverage within the timeliness threshold was generally higher under the Tolerable heat-index category than under Caution and Extreme Caution for BCG, Pentavalent 1 and Pentavalent 2. For Pentavalent 3, Vitamin A and MCV1, the predicted vaccination coverage was broadly similar across the heat-index categories. For models using heatwave occurrence as the exposure, the predicted vaccination coverage within the timeliness threshold was very similar between children under the Heatwave and No Heatwave scenarios across all antigens. When rounded to zero decimal places, the predictions were equivalent across the two exposure categories, indicating little difference in predicted vaccination timeliness under the two hypothetical heatwave scenarios.
 
 Across antigens, predicted vaccination coverage within the timeliness threshold was generally higher for vaccines scheduled earlier in childhood, such as BCG and Pentavalent 1, than for vaccines scheduled later such as Pentavalent 3 and MCV1. Vitamin A was an exception, with the lowest predicted vaccination coverage within the timeliness threshold across the antigens, including lower coverage than MCV1 despite being scheduled at an earlier age (6 months compared to MCV1 at 9 months). This pattern was observed across the different heat-index and heatwave scenarios.
 
 At the 28-day timeliness threshold, BCG had the highest predicted vaccination coverage within the timeliness threshold across the exposure scenarios. Under the Tolerable, Caution and Extreme Caution heat-index scenarios, the model-standardized predicted coverage for BCG was 39%, 36% and 33%, respectively. Under the No Heatwave and Heatwave scenarios, the predicted coverage was 36% in both groups. For the other antigens, predicted coverage at 28 days ranged from 23–27% for Pentavalent 1, 20–22% for Pentavalent 2, 17–18% for Pentavalent 3, 9–10% for Vitamin A and 16% for MCV1 across the heat-index categories. Under the heatwave scenarios, the corresponding estimates were 36%, 25%, 21%, 18%, 10% and 17%, respectively for the antigens.
+
+## Model checking
+
+The adequacy of the Weibull AFT models was assessed using complementary log-log diagnostic plots of the survey-weighted survival estimates against log(time) as shown in Figure 4.6. In this diagnostic plot, approximately straight and parallel curves provide graphical support for the assumed Weibull form and the AFT structure. The diagnostic plots showed generally parallel patterns across the categorical heatwave exposure groups, although the degree of linearity varied across antigens. The BCG model showed relatively clear evidence of both linearity and parallelism. For the remaining heatwave models, the curves were broadly parallel, although some departures from a clear linear pattern were observed. For the heat index models, the curves generally showed less distinct linear and parallel patterns, particularly for Pentavalent 1–3, Vitamin A, and MCV1.
+
+![represents the weighted complementary log-log diagnostic plots for Weibull model assumptions. The visualization is faceted by the six childhood antigens across rows and stratified by the two primary exposure metrics across columns. The survey-weighted step curves show log(-log(S(t))) plotted against log(t).](images/log-log-weibull-plots.png){width="632"}
